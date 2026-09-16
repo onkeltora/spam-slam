@@ -2,6 +2,7 @@ class_name MailData
 extends RefCounted
 ## One mail in the inbox. All sorting-relevant features are plain flags;
 ## the visible text is built from them at draw time, so it stays localizable.
+## Setting: an office around the year 2000 (DullOS 98, early spam & phishing).
 
 enum Category { IMPORTANT, SPAM, NEWSLETTER, PHISHING }
 enum SenderKind { COMPANY, NEWSLETTER, STRANGER, SECURITY }
@@ -12,7 +13,7 @@ const CATEGORY_KEYS := {
 	Category.NEWSLETTER: "CAT_NEWSLETTER",
 	Category.PHISHING: "CAT_PHISHING",
 }
-## Legend text for the base rule of each basket ("🏢 Colleagues" etc.)
+## Legend text for the base rule of each folder ("Colleagues" etc.)
 const BASE_RULE_KEYS := {
 	Category.IMPORTANT: "BASE_IMPORTANT",
 	Category.SPAM: "BASE_SPAM",
@@ -25,7 +26,7 @@ const CATEGORY_COLORS := {
 	Category.NEWSLETTER: Color("5aa9e6"),
 	Category.PHISHING: Color("a66cff"),
 }
-## Base rule: the sender kind decides the basket unless the active rule overrides it.
+## Base rule: the sender kind decides the folder unless the active rule overrides it.
 const BASE_CATEGORY := {
 	SenderKind.COMPANY: Category.IMPORTANT,
 	SenderKind.NEWSLETTER: Category.NEWSLETTER,
@@ -33,10 +34,17 @@ const BASE_CATEGORY := {
 	SenderKind.SECURITY: Category.PHISHING,
 }
 const KIND_ICONS := {
-	SenderKind.COMPANY: "🏢",
-	SenderKind.NEWSLETTER: "📰",
-	SenderKind.STRANGER: "❓",
-	SenderKind.SECURITY: "🔒",
+	SenderKind.COMPANY: PixelIcons.Icon.BUILDING,
+	SenderKind.NEWSLETTER: PixelIcons.Icon.NEWSPAPER,
+	SenderKind.STRANGER: PixelIcons.Icon.STRANGER,
+	SenderKind.SECURITY: PixelIcons.Icon.LOCK,
+}
+## Icon shown next to each folder's base-rule legend.
+const CATEGORY_ICONS := {
+	Category.IMPORTANT: PixelIcons.Icon.BUILDING,
+	Category.NEWSLETTER: PixelIcons.Icon.NEWSPAPER,
+	Category.SPAM: PixelIcons.Icon.STRANGER,
+	Category.PHISHING: PixelIcons.Icon.LOCK,
 }
 
 const COMPANY_DOMAIN := "dullcorp.com"
@@ -56,19 +64,19 @@ const SENDERS := {
 		["SENDER_MEGAMART", "news", "megamart.com"],
 		["SENDER_CATFACTS", "daily", "catfacts.net"],
 		["SENDER_FITNESS", "weekly", "fitnessfreak.com"],
-		["SENDER_TECHDAILY", "newsletter", "techdaily.io"],
+		["SENDER_TECHDAILY", "newsletter", "pc-daily.de"],
 	],
 	SenderKind.STRANGER: [
-		["SENDER_WINNER", "claim", "win-big.biz"],
+		["SENDER_WINNER", "claim", "win-big.com"],
 		["SENDER_DIET", "offers", "miracle-diet.net"],
-		["SENDER_CRYPTO", "chris", "moon-coins.io"],
+		["SENDER_STOCKS", "insider", "penny-stocks.net"],
 		["SENDER_LORD", "reginald", "royal-inheritance.com"],
 	],
 	SenderKind.SECURITY: [
 		["SENDER_PAYPOL", "security", "paypol-support.com"],
 		["SENDER_BONK", "service", "bonk-online.net"],
 		["SENDER_ACCOUNT", "no-reply", "account-verify.com"],
-		["SENDER_PARCEL", "tracking", "parcel-status.info"],
+		["SENDER_AUCTION", "support", "bidmart-support.info"],
 	],
 }
 const SUBJECT_PREFIXES := {
@@ -83,9 +91,9 @@ const SUBJECT_COUNTS := {
 	SenderKind.STRANGER: 5,
 	SenderKind.SECURITY: 5,
 }
-const EMOJI_POOL := ["🎉", "💰", "🔥", "😍", "✨", "🚀", "💯", "🎁"]
-const ATTACHMENT_EXTENSIONS := ["pdf", "docx", "zip", "exe"]
-const ATTACHMENT_KEYS := {"pdf": "FILE_PDF", "docx": "FILE_DOCX", "zip": "FILE_ZIP", "exe": "FILE_EXE"}
+const ATTACHMENT_EXTENSIONS := ["pdf", "doc", "zip", "exe"]
+const ATTACHMENT_KEYS := {"pdf": "FILE_PDF", "doc": "FILE_DOC", "zip": "FILE_ZIP", "exe": "FILE_EXE"}
+const LINK_PATHS := ["login.php", "verify.asp", "konto/update.cgi", "gewinn.html"]
 
 var kind: SenderKind = SenderKind.COMPANY
 var sender_index := 0
@@ -94,30 +102,30 @@ var is_boss := false
 
 # --- Rule-relevant features ---
 var caps := false
-var emoji_count := 0
-var emojis := ""
+var smiley_count := 0
+var smileys: Array[int] = []        # PixelIcons.Icon values
 var has_cat := false
 var exclusive := false
 var urgent := false
 var no_subject := false
 var digits_in_address := false
 var address_digits := ""
-var xyz_domain := false
+var biz_domain := false
 var company_domain := false         # security alert really sent from @dullcorp.com
 var lookalike_company_domain := false  # ...or from @dullc0rp.com (nasty)
 var attachment_ext := ""            # "" = no attachment
 var has_link := false
+var link_path := ""
 var amount := 0                     # 0 = no amount line
 
 # --- Visual state for the inbox pile (owned by InboxPile) ---
 var pile_jitter := Vector2.ZERO
-var pile_rotation := 0.0
 var pile_drop := 1.0
 
 
 func _init() -> void:
-	pile_jitter = Vector2(randf_range(-8.0, 8.0), randf_range(-2.0, 2.0))
-	pile_rotation = randf_range(-0.035, 0.035)
+	pile_jitter = Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
+	link_path = LINK_PATHS.pick_random()
 
 
 ## Sets the sender kind and rolls a fitting sender + subject.
@@ -129,11 +137,11 @@ func set_kind(new_kind: SenderKind) -> void:
 		has_link = true
 
 
-func set_emoji_count(count: int) -> void:
-	emoji_count = count
-	emojis = ""
+func set_smiley_count(count: int) -> void:
+	smiley_count = count
+	smileys.clear()
 	for i in count:
-		emojis += EMOJI_POOL[randi() % EMOJI_POOL.size()]
+		smileys.append(PixelIcons.SMILEYS.pick_random())
 
 
 func set_digits_in_address(enabled: bool) -> void:
@@ -153,8 +161,8 @@ func has_company_domain() -> bool:
 	return kind == SenderKind.COMPANY or company_domain
 
 
-func get_icon() -> String:
-	return "★" if is_boss else KIND_ICONS[kind]
+func get_icon() -> PixelIcons.Icon:
+	return PixelIcons.Icon.STAR if is_boss else KIND_ICONS[kind]
 
 
 func get_sender_name() -> String:
@@ -173,8 +181,8 @@ func get_domain() -> String:
 		domain = COMPANY_DOMAIN
 	else:
 		domain = SENDERS[kind][sender_index][2]
-	if xyz_domain:
-		domain = domain.get_basename() + ".xyz"
+	if biz_domain:
+		domain = domain.get_basename() + ".biz"
 	return domain
 
 
@@ -189,6 +197,7 @@ func get_address() -> String:
 	return handle + address_digits + "@" + get_domain()
 
 
+## Subject text only; smileys come from get_subject_icons().
 func get_subject() -> String:
 	if no_subject:
 		return tr("SUBJ_NONE")
@@ -199,22 +208,30 @@ func get_subject() -> String:
 		subject = tr("WORD_URGENT") + ": " + subject
 	if caps:
 		subject = subject.to_upper()
-	if has_cat:
-		subject += " 🐱"
-	if emoji_count > 0:
-		subject += " " + emojis
 	return subject
 
 
-## Attachment / link / amount lines shown below the subject.
-func get_extra_lines() -> Array[String]:
-	var lines: Array[String] = []
+## Pixel smileys drawn after the subject text (cat first).
+func get_subject_icons() -> Array[int]:
+	var icons: Array[int] = []
+	if no_subject:
+		return icons
+	if has_cat:
+		icons.append(PixelIcons.Icon.CAT)
+	icons.append_array(smileys)
+	return icons
+
+
+## Attachment / link / amount lines below the subject.
+## Each entry: {"text": String, "icon": int (-1 = none), "link": bool}
+func get_extra_lines() -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
 	if attachment_ext != "":
-		lines.append("📎 " + tr(ATTACHMENT_KEYS[attachment_ext]) + "." + attachment_ext)
+		lines.append({"text": tr(ATTACHMENT_KEYS[attachment_ext]) + "." + attachment_ext, "icon": PixelIcons.Icon.CLIP, "link": false})
 	if has_link:
-		lines.append("🔗 " + tr("LINK_TEXT"))
+		lines.append({"text": "http://www." + get_domain() + "/" + link_path, "icon": -1, "link": true})
 	if amount > 0:
-		lines.append(tr("AMOUNT_FMT").format({"v": _format_number(amount)}))
+		lines.append({"text": tr("AMOUNT_FMT").format({"v": _format_number(amount)}), "icon": -1, "link": false})
 	return lines
 
 

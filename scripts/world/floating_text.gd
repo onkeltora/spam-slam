@@ -10,8 +10,9 @@ var duration := 0.9
 
 
 static func spawn(parent: Node, pos: Vector2, p_text: String, p_color: Color, p_size: int = 30,
-		p_duration: float = 0.9) -> FloatingText:
+		p_duration: float = 0.9, p_rise: float = 70.0) -> FloatingText:
 	var ft := FloatingText.new()
+	ft.rise = p_rise
 	ft.text = p_text
 	ft.color = p_color
 	ft.font_size = p_size

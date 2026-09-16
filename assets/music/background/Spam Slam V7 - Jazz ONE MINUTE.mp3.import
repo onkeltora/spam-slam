@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://i1s74ww8wa5d"
+path="res://.godot/imported/Spam Slam V7 - Jazz ONE MINUTE.mp3-f1cebaa1ef1bcdd93030ea0df7e21382.mp3str"
+
+[deps]
+
+source_file="res://assets/music/background/Spam Slam V7 - Jazz ONE MINUTE.mp3"
+dest_files=["res://.godot/imported/Spam Slam V7 - Jazz ONE MINUTE.mp3-f1cebaa1ef1bcdd93030ea0df7e21382.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

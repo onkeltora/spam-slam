@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://cxtfu12gwoghq"]
+
+[ext_resource type="Script" uid="uid://d2q74i7sf470p" path="res://autoload/music_manager.gd" id="1_music"]
+[ext_resource type="AudioStream" uid="uid://dx4q8qnxkkb8f" path="res://assets/music/background/Spam Slam V8 - Simple ONE MINUTE_2.mp3" id="2_yrm8t"]
+
+[node name="MusicManager" type="Node" unique_id=1576820651]
+process_mode = 3
+script = ExtResource("1_music")
+playlist = Array[AudioStream]([ExtResource("2_yrm8t")])
+volume_db = -1.0
+
+[node name="Player" type="AudioStreamPlayer" parent="." unique_id=1631048442]
+volume_db = -60.0

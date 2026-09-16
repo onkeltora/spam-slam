@@ -1,0 +1,75 @@
+[gd_scene format=3 uid="uid://degr0agqas2b1"]
+
+[ext_resource type="Script" uid="uid://ctnme1ei86nun" path="res://autoload/sound_manager.gd" id="1_sfx"]
+[ext_resource type="Script" uid="uid://b6duyudmlis8x" path="res://scripts/audio/sound_event.gd" id="2_event"]
+[ext_resource type="AudioStream" uid="uid://ccnw06rco8idd" path="res://assets/sounds/win98/AH_AH_icq_style.ogg" id="3_5qmgl"]
+[ext_resource type="AudioStream" uid="uid://3u52du36awow" path="res://assets/sounds/win98/pop_1.wav" id="3_rx1ey"]
+[ext_resource type="AudioStream" uid="uid://brsyriueoqaml" path="res://assets/sounds/win98/pop_2.wav" id="4_culwi"]
+[ext_resource type="AudioStream" uid="uid://ber2iomydm105" path="res://assets/sounds/win98/pop_3.wav" id="5_r8tf1"]
+[ext_resource type="AudioStream" uid="uid://bqdwhiuykaq07" path="res://assets/sounds/win98/pop_4.wav" id="6_ekme8"]
+[ext_resource type="AudioStream" uid="uid://bjp13wdqlnc4p" path="res://assets/sounds/win98/power_down.wav" id="7_culwi"]
+[ext_resource type="AudioStream" uid="uid://bdxacngv7mdi6" path="res://assets/sounds/win98/disappear.wav" id="7_ekme8"]
+[ext_resource type="AudioStream" uid="uid://b0ujwyo147nqn" path="res://assets/sounds/win98/heart_collect.wav" id="7_r8tf1"]
+[ext_resource type="AudioStream" uid="uid://clpoc4n45rrh0" path="res://assets/sounds/win98/dial-up-modem-01.ogg" id="11_tfrwk"]
+
+[sub_resource type="Resource" id="SoundEvent_new_popup"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("3_rx1ey"), ExtResource("4_culwi"), ExtResource("5_r8tf1"), ExtResource("6_ekme8")])
+volume_db = -4.0
+pitch_variation = 0.05
+
+[sub_resource type="Resource" id="SoundEvent_sorted"]
+script = ExtResource("2_event")
+pitch_variation = 0.04
+combo_pitch_step = 0.015
+
+[sub_resource type="Resource" id="SoundEvent_mistake"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("7_ekme8")])
+pitch_variation = 0.32
+
+[sub_resource type="Resource" id="SoundEvent_new_rule"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("7_r8tf1")])
+
+[sub_resource type="Resource" id="SoundEvent_pile_crash"]
+script = ExtResource("2_event")
+
+[sub_resource type="Resource" id="SoundEvent_no_lives"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("7_culwi")])
+volume_db = -2.5
+combo_pitch_step = 0.06
+
+[sub_resource type="Resource" id="SoundEvent_coffee_boost"]
+script = ExtResource("2_event")
+
+[sub_resource type="Resource" id="SoundEvent_bonus"]
+script = ExtResource("2_event")
+
+[sub_resource type="Resource" id="SoundEvent_ocq_message"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("3_5qmgl")])
+
+[sub_resource type="Resource" id="SoundEvent_app_open"]
+script = ExtResource("2_event")
+
+[sub_resource type="Resource" id="SoundEvent_aoff_dialup"]
+script = ExtResource("2_event")
+streams = Array[AudioStream]([ExtResource("11_tfrwk")])
+volume_db = 2.5
+
+[node name="SoundManager" type="Node" unique_id=1732827792]
+process_mode = 3
+script = ExtResource("1_sfx")
+new_popup = SubResource("SoundEvent_new_popup")
+sorted = SubResource("SoundEvent_sorted")
+mistake = SubResource("SoundEvent_mistake")
+new_rule = SubResource("SoundEvent_new_rule")
+pile_crash = SubResource("SoundEvent_pile_crash")
+no_lives = SubResource("SoundEvent_no_lives")
+coffee_boost = SubResource("SoundEvent_coffee_boost")
+bonus = SubResource("SoundEvent_bonus")
+ocq_message = SubResource("SoundEvent_ocq_message")
+app_open = SubResource("SoundEvent_app_open")
+aoff_dialup = SubResource("SoundEvent_aoff_dialup")

@@ -2,48 +2,58 @@ extends Node2D
 ## Main scene: spawns mails into the inbox queue, reads swipes/keys,
 ## resolves sorts via GameManager and plays all the world feedback.
 
-const CARD_HOME := Vector2(640, 400)
+const CARD_HOME := ScreenLayout.CARD_HOME
 const SWIPE_COMMIT_DISTANCE := 90.0    # drag this far = sorted, even while still holding
 const SWIPE_RELEASE_DISTANCE := 45.0   # releasing after this distance also sorts
 const SWIPE_FLICK_DISTANCE := 28.0     # short but fast flicks count too
 const SWIPE_FLICK_SPEED := 1100.0
 const DRAG_FOLLOW := 0.6
 const DRAG_MAX := 110.0
+const TAP_MAX_DISTANCE := 12.0         # finger moved less than this = tap, not swipe
+const DOUBLE_TAP_MSEC := 400           # second tap on the same desktop icon within this = open program
 const EMPTY_INBOX_SPAWN_BOOST := 2.5   # empty inbox = next mail comes faster
-const GAME_OVER_SCREEN_DELAY := 1.2
+const GAME_OVER_SCREEN_DELAY := 1.2   # fired: CRT power-off, then results
+const CRASH_BLUESCREEN_DELAY := 0.75  # inbox overflow: window trail glitch, then bluescreen...
+const CRASH_SCREEN_DELAY := 2.6       # ...which stays readable for a moment
 
 @onready var camera: Camera2D = $Camera2D
 @onready var pile: InboxPile = %Pile
 @onready var cards: Node2D = %Cards
-@onready var basket_root: Node2D = %Baskets
+@onready var folder_root: Node2D = %Folders
 @onready var fx: Node2D = %FX
+@onready var screen_overlay: ScreenOverlay = %ScreenOverlay
+@onready var desktop: Node2D = %Desktop
+@onready var taskbar: Node2D = %Taskbar
+@onready var app_windows: AppWindows = %AppWindows
 @onready var overlay: CanvasLayer = %Overlay
 
 var queue: Array[MailData] = []
 var front_card: MailCard = null
-var baskets := {}  # MailData.Category -> Basket
+var folders := {}  # MailData.Category -> SortFolder
 
 var _spawn_timer := 0.0
 var _shake := 0.0
 var _touch_index := -1
 var _touch_start := Vector2.ZERO
 var _swipe_done := false
+var _last_tap_icon := ""
+var _last_tap_msec := 0
 
 
 func _ready() -> void:
 	for dir in GameManager.DEFAULT_LAYOUT:
-		var basket := Basket.new()
-		basket.z_index = 5
-		basket_root.add_child(basket)
-		basket.setup(GameManager.DEFAULT_LAYOUT[dir], dir)
-		baskets[basket.category] = basket
+		var folder := SortFolder.new()
+		folder_root.add_child(folder)
+		folder.setup(GameManager.DEFAULT_LAYOUT[dir], dir)
+		folders[folder.category] = folder
 
 	GameManager.screen_shake.connect(func(intensity: float) -> void: _shake = maxf(_shake, intensity))
 	GameManager.baskets_swapped.connect(_on_baskets_swapped)
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.boost_started.connect(func(_d: float) -> void:
-		for basket in baskets.values():
-			_burst(basket.position, Color("c47a2c"), 18))
+		for folder in folders.values():
+			_burst(folder.position, Color("c47a2c"), 18))
+	app_windows.window_changed.connect(taskbar.set_app_title)
 	overlay.start_requested.connect(_start_run)
 	overlay.show_title()
 
@@ -59,9 +69,10 @@ func _start_run() -> void:
 	front_card = null
 	queue.clear()
 	pile.reset()
+	screen_overlay.boot()
 	GameManager.start_game()
-	for basket in baskets.values():
-		basket.move_to_slot(_dir_of_category(basket.category))
+	for folder in folders.values():
+		folder.move_to_slot(_dir_of_category(folder.category))
 	_spawn_timer = 0.0
 	_spawn_mail()
 
@@ -104,7 +115,7 @@ func _bring_next_to_front(from_pile: bool) -> void:
 	var card := MailCard.new()
 	card.z_index = 2
 	cards.add_child(card)
-	var start := CARD_HOME + (Vector2(0, -InboxPile.LAYER_OFFSET) if from_pile else Vector2(0, -150))
+	var start := CARD_HOME + (InboxPile.LAYER_OFFSET if from_pile else Vector2(0, -150))
 	card.setup(queue[0], start)
 	card.scale = Vector2.ONE * (0.97 if from_pile else 0.85)
 	if not from_pile:
@@ -118,6 +129,7 @@ func _bring_next_to_front(from_pile: bool) -> void:
 	pile.set_mails(queue.slice(1))
 	if from_pile:
 		pile.advance()
+	GameManager.mail_presented.emit(queue[0])
 
 
 # --- Input ---
@@ -127,8 +139,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		var dir := _dir_from_key(event.keycode)
-		if dir >= 0:
-			_sort_front(dir)
+		if dir >= 0 or (event.keycode == KEY_ESCAPE and app_windows.is_open()):
+			_on_swipe(dir)
 			get_viewport().set_input_as_handled()
 	elif event is InputEventScreenTouch:
 		if event.pressed and _touch_index == -1:
@@ -138,7 +150,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif not event.pressed and event.index == _touch_index:
 			var d: Vector2 = event.position - _touch_start
 			if not _swipe_done and d.length() >= SWIPE_RELEASE_DISTANCE:
-				_sort_front(_dir_from_vector(d))
+				_on_swipe(_dir_from_vector(d))
+			elif not _swipe_done and d.length() <= TAP_MAX_DISTANCE:
+				_on_tap(event.position)
 			_touch_index = -1
 			_set_drag(Vector2.ZERO)
 	elif event is InputEventScreenDrag and event.index == _touch_index and not _swipe_done:
@@ -146,10 +160,35 @@ func _unhandled_input(event: InputEvent) -> void:
 		var flick: bool = d.length() >= SWIPE_FLICK_DISTANCE and event.velocity.length() >= SWIPE_FLICK_SPEED
 		if d.length() >= SWIPE_COMMIT_DISTANCE or flick:
 			_swipe_done = true
-			_sort_front(_dir_from_vector(d))
+			_on_swipe(_dir_from_vector(d))
 			_set_drag(Vector2.ZERO)
-		else:
+		elif not app_windows.is_open():
 			_set_drag(d)
+
+
+## A swipe (or direction key) first closes an open desktop program, only then it sorts again.
+func _on_swipe(dir: int) -> void:
+	if app_windows.is_open():
+		app_windows.close_window()
+	elif dir >= 0:
+		_sort_front(dir)
+
+
+## Taps: close button / program window first, then desktop icons (single = select, double = open).
+func _on_tap(screen_pos: Vector2) -> void:
+	var world_pos := get_canvas_transform().affine_inverse() * screen_pos
+	if app_windows.handle_tap(world_pos):
+		return
+	var covered := (front_card != null and front_card.covers(world_pos)) or pile.covers(world_pos)
+	var icon: String = "" if covered else desktop.icon_at(world_pos)
+	var now := Time.get_ticks_msec()
+	if icon != "" and icon == _last_tap_icon and now - _last_tap_msec <= DOUBLE_TAP_MSEC:
+		app_windows.open_app(icon, desktop.icon_rect(icon))
+		_last_tap_icon = ""
+		return
+	desktop.select(icon)
+	_last_tap_icon = icon
+	_last_tap_msec = now
 
 
 func _set_drag(d: Vector2) -> void:
@@ -157,8 +196,8 @@ func _set_drag(d: Vector2) -> void:
 		front_card.set_drag((d * DRAG_FOLLOW).limit_length(DRAG_MAX))
 	var preview_dir := _dir_from_vector(d) if d.length() > 12.0 else -1
 	var amount := clampf(d.length() / SWIPE_COMMIT_DISTANCE, 0.0, 1.0)
-	for basket in baskets.values():
-		basket.set_preview(amount if basket.dir == preview_dir else 0.0)
+	for folder in folders.values():
+		folder.set_preview(amount if folder.dir == preview_dir else 0.0)
 
 
 func _dir_from_vector(v: Vector2) -> int:
@@ -197,7 +236,7 @@ func _sort_front(dir: int) -> void:
 	front_card = null
 
 	var result := GameManager.sort_mail(mail, dir)
-	var chosen: Basket = baskets[result.chosen]
+	var chosen: SortFolder = folders[result.chosen]
 	card.fly_to(chosen.position)
 
 	if result.correct:
@@ -208,10 +247,10 @@ func _sort_front(dir: int) -> void:
 		_shake = maxf(_shake, 2.0 + GameManager.get_multiplier())
 	else:
 		chosen.reject()
-		var correct_basket: Basket = baskets[result.correct_category]
-		correct_basket.flash_correct()
+		var correct_folder: SortFolder = folders[result.correct_category]
+		correct_folder.flash_correct()
 		_burst(chosen.position, Color(1, 0.2, 0.15), 22)
-		FloatingText.spawn(fx, CARD_HOME + Vector2(0, -150), "✗ " + result.reason, Color("ff6a5a"), 26, 1.6)
+		FloatingText.spawn(fx, CARD_HOME + Vector2(0, -135), "✗ " + result.reason, Color("ff6a5a"), 24, 1.6, 20.0)
 
 	if GameManager.running:
 		GameManager.set_pile_count(queue.size())
@@ -247,21 +286,25 @@ func _burst(pos: Vector2, color: Color, amount: int) -> void:
 
 
 func _on_baskets_swapped(_a: int, _b: int) -> void:
-	for basket in baskets.values():
-		basket.move_to_slot(_dir_of_category(basket.category))
+	for folder in folders.values():
+		folder.move_to_slot(_dir_of_category(folder.category))
 	_shake = maxf(_shake, 10.0)
 
 
 func _on_game_over(reason: String) -> void:
 	_touch_index = -1
 	_set_drag(Vector2.ZERO)
-	if reason == "pile":
-		pile.collapse()
-		_shake = 30.0
-	else:
-		_shake = 18.0
 	if front_card != null:
-		front_card.fall()
-		front_card = null
-	await get_tree().create_timer(GAME_OVER_SCREEN_DELAY).timeout
+		front_card.set_drag(Vector2.ZERO)
+	if reason == "pile":
+		pile.crash()
+		_shake = 14.0
+		await get_tree().create_timer(CRASH_BLUESCREEN_DELAY).timeout
+		screen_overlay.bluescreen()
+		_shake = 8.0
+		await get_tree().create_timer(CRASH_SCREEN_DELAY - CRASH_BLUESCREEN_DELAY).timeout
+	else:
+		screen_overlay.power_off()
+		_shake = 18.0
+		await get_tree().create_timer(GAME_OVER_SCREEN_DELAY).timeout
 	overlay.show_game_over(reason)

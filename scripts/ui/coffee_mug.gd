@@ -46,8 +46,8 @@ func _draw() -> void:
 		DrawUtil.rounded_rect(self, level, 4, coffee_color)
 		draw_line(level.position, level.position + Vector2(level.size.x, 0), coffee_color.lightened(0.35), 2.0)
 	DrawUtil.rounded_frame(self, body, 6, Color("2a2420"), 2)
-	# "COFFEE" print on the mug
-	DrawUtil.text_centered(self, "☕", body.get_center() + Vector2(0, -2), 18, Color(1, 1, 1, 0.9))
+	# DullCorp print on the mug
+	DrawUtil.text_centered(self, "DC", body.get_center() + Vector2(0, -2), 16, Color(1, 1, 1, 0.55))
 
 	# Steam while boosted (or when nearly full)
 	if _boosting or _shown_fill > 0.8:

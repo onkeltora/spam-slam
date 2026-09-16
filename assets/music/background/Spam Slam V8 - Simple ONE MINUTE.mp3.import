@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://csal0objxikfc"
+path="res://.godot/imported/Spam Slam V8 - Simple ONE MINUTE.mp3-7b2a0ce488cc7ae04e1cf803c03c99cd.mp3str"
+
+[deps]
+
+source_file="res://assets/music/background/Spam Slam V8 - Simple ONE MINUTE.mp3"
+dest_files=["res://.godot/imported/Spam Slam V8 - Simple ONE MINUTE.mp3-7b2a0ce488cc7ae04e1cf803c03c99cd.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

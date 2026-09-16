@@ -3,76 +3,73 @@ CAT_IMPORTANT,IMPORTANT,WICHTIG
 CAT_SPAM,SPAM,SPAM
 CAT_NEWSLETTER,NEWSLETTER,NEWSLETTER
 CAT_PHISHING,PHISHING,PHISHING
-BASE_IMPORTANT,🏢 Colleagues,🏢 Kollegen
-BASE_SPAM,❓ Strangers,❓ Unbekannte
-BASE_NEWSLETTER,📰 Subscriptions,📰 Abos
-BASE_PHISHING,🔒 Account alerts,🔒 Konto-Warnungen
+BASE_IMPORTANT,Colleagues,Kollegen
+BASE_SPAM,Strangers,Unbekannte
+BASE_NEWSLETTER,Subscriptions,Abos
+BASE_PHISHING,Account alerts,Konto-Warnungen
 BASE_BOSS,★ The Boss,★ Der Chef
 MAIL_WINDOW_TITLE,New Message,Neue Nachricht
 BOSS_WINDOW_TITLE,★ MESSAGE FROM THE BOSS ★,★ NACHRICHT VOM CHEF ★
-MAIL_FROM,From:,Von:
-MAIL_SUBJECT,Subject:,Betreff:
 SENDER_KAREN,Karen (Accounting),Karen (Buchhaltung)
-SENDER_BERND,Bernd (IT),Bernd (IT)
-SENDER_TEAMLEAD,Team Lead,Teamleitung
+SENDER_BERND,Bernd (IT),Bernd (EDV)
+SENDER_TEAMLEAD,Team Lead,Abteilungsleitung
 SENDER_HR,HR Department,Personalabteilung
 SENDER_KEVIN,Kevin (Intern),Kevin (Praktikant)
 SENDER_BOSS,The Boss,Der Chef
 SENDER_MEGAMART,MegaMart Deals,MegaMart Angebote
 SENDER_CATFACTS,Cat Facts Daily,Katzenfakten Täglich
 SENDER_FITNESS,FitnessFreak Weekly,FitnessFreak Wöchentlich
-SENDER_TECHDAILY,Tech Daily,Tech Daily
+SENDER_TECHDAILY,PC Daily,PC Täglich
 SENDER_WINNER,Lucky Winner Center,Gewinner-Zentrale
 SENDER_DIET,Miracle Diet Ltd,Wunderdiät GmbH
-SENDER_CRYPTO,Crypto Chris,Krypto-Chris
+SENDER_STOCKS,Hot Stock Tips,Heiße Aktien-Tipps
 SENDER_LORD,Lord Reginald III,Lord Reginald III.
 SENDER_PAYPOL,PayPol Security,PayPol Sicherheit
-SENDER_BONK,Bonk Customer Service,Bonk Kundenservice
+SENDER_BONK,Bonk Online Banking,Bonk Online-Banking
 SENDER_ACCOUNT,Account Team,Konto-Team
-SENDER_PARCEL,Parcel Service,Paketdienst
-SENDER_CORP_SECURITY,DullCorp IT Security,DullCorp IT-Sicherheit
-SUBJ_COMPANY_0,Meeting moved to 3pm,Meeting auf 15 Uhr verschoben
+SENDER_AUCTION,BidMart Auctions,BidMart Auktionen
+SENDER_CORP_SECURITY,DullCorp IT Security,DullCorp EDV-Sicherheit
+SUBJ_COMPANY_0,Meeting moved to 3pm,Besprechung auf 15 Uhr verschoben
 SUBJ_COMPANY_1,Budget report Q3,Budgetbericht Q3
 SUBJ_COMPANY_2,Who took my yogurt?,Wer hat meinen Joghurt genommen?
-SUBJ_COMPANY_3,Server downtime tonight,Serverwartung heute Nacht
-SUBJ_COMPANY_4,Your vacation request,Dein Urlaubsantrag
+SUBJ_COMPANY_3,Y2K test: please restart your PC,Jahr-2000-Test: Bitte PC neu starten
+SUBJ_COMPANY_4,Your vacation request,Ihr Urlaubsantrag
 SUBJ_COMPANY_5,Printer broken again,Drucker schon wieder kaputt
 SUBJ_COMPANY_6,Timesheets due Friday,Stundenzettel bis Freitag
 SUBJ_NEWS_0,This week's best deals,Die besten Angebote der Woche
 SUBJ_NEWS_1,10 facts about cats,10 Fakten über Katzen
-SUBJ_NEWS_2,Your weekly workout plan,Dein Trainingsplan der Woche
-SUBJ_NEWS_3,Gadgets you will love,Gadgets zum Verlieben
+SUBJ_NEWS_2,Your weekly workout plan,Ihr Trainingsplan der Woche
+SUBJ_NEWS_3,Is your PC ready for Y2K?,Ist Ihr PC bereit für das Jahr 2000?
 SUBJ_NEWS_4,Last chance: summer sale,Letzte Chance: Sommerschlussverkauf
-SUBJ_STRANGER_0,You won a free cruise,Du hast eine Kreuzfahrt gewonnen
+SUBJ_STRANGER_0,You won a free cruise,Sie haben eine Kreuzfahrt gewonnen
 SUBJ_STRANGER_1,Lose 20 pounds in 2 days,10 Kilo weniger in 2 Tagen
 SUBJ_STRANGER_2,Make money from home,Reich werden von zu Hause
-SUBJ_STRANGER_3,A business proposal for you,Ein Geschäftsvorschlag für dich
-SUBJ_STRANGER_4,Hot deals just for you,Heiße Deals nur für dich
-SUBJ_SECURITY_0,Your account was suspended,Dein Konto wurde gesperrt
-SUBJ_SECURITY_1,Verify your password now,Bestätige jetzt dein Passwort
-SUBJ_SECURITY_2,Unusual login detected,Ungewöhnliche Anmeldung erkannt
-SUBJ_SECURITY_3,Confirm your payment details,Bestätige deine Zahlungsdaten
-SUBJ_SECURITY_4,Your parcel is on hold,Dein Paket wird zurückgehalten
-SUBJ_BOSS,Special assignment for you,Sonderauftrag für dich
+SUBJ_STRANGER_3,Confidential business proposal,Vertraulicher Geschäftsvorschlag
+SUBJ_STRANGER_4,This stock will explode!,Diese Aktie wird explodieren!
+SUBJ_SECURITY_0,Your account was suspended,Ihr Konto wurde gesperrt
+SUBJ_SECURITY_1,Verify your password now,Bestätigen Sie jetzt Ihr Passwort
+SUBJ_SECURITY_2,Unusual login detected,Ungewöhnliche Anmeldung festgestellt
+SUBJ_SECURITY_3,Confirm your payment details,Bestätigen Sie Ihre Zahlungsdaten
+SUBJ_SECURITY_4,Your online banking PIN has expired,Ihre Online-Banking-PIN ist abgelaufen
+SUBJ_BOSS,Special assignment for you,Sonderauftrag für Sie
 SUBJ_NONE,(no subject),(kein Betreff)
 WORD_EXCLUSIVE,Exclusive,Exklusiv
 WORD_URGENT,Urgent,Dringend
 FILE_PDF,invoice,rechnung
-FILE_DOCX,report,bericht
+FILE_DOC,report,bericht
 FILE_ZIP,photos,fotos
-FILE_EXE,free_game,gratis_spiel
-LINK_TEXT,Click here to verify,Hier klicken & bestätigen
-AMOUNT_FMT,💵 Amount: ${v},💵 Betrag: {v} €
+FILE_EXE,screensaver,bildschirmschoner
+AMOUNT_FMT,Amount: ${v},Betrag: {v} DM
 NUM_SEP,",",.
 COND_CAPS,Subject in ALL CAPS,Betreff in GROSSBUCHSTABEN
 COND_DIGITS,Numbers in sender address,Zahlen in der Absenderadresse
-COND_EMOJIS,3+ emojis in subject,3+ Emojis im Betreff
+COND_SMILEYS,3+ smileys in subject,3+ Smileys im Betreff
 COND_EXE,.exe attachment,.exe-Anhang
-COND_XYZ,Sender domain ends in .xyz,Absender-Domain endet auf .xyz
+COND_BIZ,Sender domain ends in .biz,Absender-Domain endet auf .biz
 COND_EXCLUSIVE,'Exclusive' in subject,'Exklusiv' im Betreff
 COND_URGENT,'Urgent' in subject,'Dringend' im Betreff
-COND_AMOUNT,"Amount over $1,000",Betrag über 1.000 €
-COND_CAT,Boss loves cats: 🐱 in subject,Chef liebt Katzen: 🐱 im Betreff
+COND_AMOUNT,"Amount over $1,000",Betrag über 1.000 DM
+COND_CAT,Boss loves cats: cat smiley in subject,Chef liebt Katzen: Katzen-Smiley im Betreff
 COND_COMPANY_LINK,A colleague sends a link,Kollege schickt einen Link
 COND_NEWS_ATTACH,Newsletter with attachment,Newsletter mit Anhang
 COND_NO_SUBJECT,No subject,Kein Betreff
@@ -80,29 +77,63 @@ COND_HR,Anything from HR,Alles von der Personalabteilung
 COND_CORP_SECURITY,Account alert from @dullcorp.com,Konto-Warnung von @dullcorp.com
 HUD_SCORE,SCORE,PUNKTE
 HUD_COMBO,COMBO {n}  ×{m},COMBO {n}  ×{m}
-HUD_INBOX,INBOX,POSTEINGANG
+HUD_INBOX,Inbox,Posteingang
 HUD_RULE,RULE,REGEL
 HUD_RULE_NONE,Base rules only – the sender decides,Nur Grundregeln – der Absender entscheidet
 HUD_NEW_RULE,NEW RULE!,NEUE REGEL!
 HUD_REORG_TITLE,REORG!,UMSTRUKTURIERUNG!
-HUD_REORG_TEXT,IT swapped two baskets,Die IT hat zwei Körbe vertauscht
+HUD_REORG_TEXT,IT rearranged two folders,Die EDV hat zwei Ordner vertauscht
 HUD_BOOST,CAFFEINE BOOST!,KOFFEIN-BOOST!
-HUD_BOOST_TEXT,Inbox slows down,Der Posteingang wird langsamer
+HUD_BOOST_TEXT,coffee.exe is running – inbox slows down,kaffee.exe läuft – Posteingang wird langsamer
+OS_START,Start,Start
+DESKTOP_FILE_CAT,hairy_pussy.jpg,hairy_pussy.jpg
+DESKTOP_APP_CHAT,OCQ,OCQ
+DESKTOP_APP_PLAYER,WhipAmp,WhipAmp
+DESKTOP_APP_ONLINE,AOFF,AOFF
+AOFF_CD_OFFER,1000 FREE HOURS!,1000 FREISTUNDEN!
+VIEWER_TITLE,{file} – Image Viewer,{file} – Bildbetrachter
+VIEWER_STATUS,"640 × 480   ·   1,337 KB   ·   100%",640 × 480   ·   1.337 KB   ·   100%
+AOFF_WINDOW_TITLE,AOFF – Sign On,AOFF – Anmelden
+AOFF_SCREEN_NAME,Screen name:,Nutzerkennung:
+AOFF_PASSWORD,Password:,Passwort:
+AOFF_SIGN_ON,Sign On,Einwählen
+AOFF_CANCEL,Cancel,Abbrechen
+AOFF_STEP_INIT,Initializing modem,Modem wird initialisiert
+AOFF_STEP_DIAL,Dialing 0190-555-2633,Wähle 0190-555-2633
+AOFF_STEP_CONNECT,"Connecting at 56,000 bps",Verbinde mit 56.000 bps
+AOFF_BUSY,Line busy. Please try again later.,Leitung besetzt. Bitte später erneut versuchen.
+OCQ_ONLINE,Online,Online
+OCQ_OFFLINE,Offline,Offline
+OCQ_HISTORY,Messages from the Boss,Nachrichten vom Chef
+OCQ_NO_MESSAGES,No messages yet,Noch keine Nachrichten
+OCQ_MENU,Main,Menü
+CONTACT_MOM,Mom,Mama
+WHIPAMP_SLOGAN,It really whips the alpaca's fluff.,Zaust dem Alpaka so richtig die Wolle.
+DIALOG_CAPTION,DullOS 98,DullOS 98
+DIALOG_OK,OK,OK
+MESSENGER_TITLE,OCQ,OCQ
+BOSS_SAYS,The Boss says:,Der Chef schreibt:
 BOSS_CHALLENGE,{goal} mails without mistakes,{goal} Mails ohne Fehler
 BOSS_REWARD_LIFE,Reward: +1 ♥,Belohnung: +1 ♥
 BOSS_REWARD_SCORE,Reward: +{v},Belohnung: +{v}
-BOSS_SUCCESS,BOSS IS PLEASED!,CHEF IST ZUFRIEDEN!
-BOSS_FAIL,Boss: *sigh*,Chef: *seufz*
+BOSS_SUCCESS,Great work! Keep it up.,Gute Arbeit! Weiter so.
+BOSS_FAIL,*sigh*,*seufz*
+BSOD_TITLE,DullOS,DullOS
+BSOD_LINE_1,A fatal exception 0E has occurred at 0028:C0FFEE42 in VxD INBOX(01).,Ein schwerer Ausnahmefehler 0E ist bei 0028:C0FFEE42 in VxD POSTEING(01) aufgetreten.
+BSOD_LINE_2,The current application will be terminated.,Die aktuelle Anwendung wird beendet.
+BSOD_LINE_3,*  Too many unread mails. The inbox has collapsed.,*  Zu viele ungelesene Mails. Der Posteingang ist eingestürzt.
+BSOD_LINE_4,*  Press any key to cry quietly.,*  Drücken Sie eine beliebige Taste zum leisen Weinen.
+BSOD_CONTINUE,Press any key to continue _,Weiter mit beliebiger Taste _
 TITLE_NAME,SPAM SLAM,SPAM SLAM
-TITLE_HINT,Swipe each mail into the right basket – or use arrow keys / WASD.,Wisch jede Mail in den richtigen Korb – oder nutz Pfeiltasten / WASD.
-TITLE_HINT2,The sender decides the basket – unless the RULE says otherwise!,Der Absender bestimmt den Korb – außer die REGEL sagt was anderes!
+TITLE_HINT,Swipe each mail into the right folder – or use arrow keys / WASD.,Wisch jede Mail in den richtigen Ordner – oder nutz Pfeiltasten / WASD.
+TITLE_HINT2,The sender decides the folder – unless the RULE says otherwise!,Der Absender bestimmt den Ordner – außer die REGEL sagt was anderes!
 TITLE_START,Tap or press any key to start,Tippen oder Taste drücken zum Starten
 GAMEOVER_TITLE,GAME OVER,FEIERABEND!
-GAMEOVER_LIVES,Too many mistakes. You're fired.,Zu viele Fehler. Du bist gefeuert.
-GAMEOVER_PILE,Your inbox collapsed!,Dein Posteingang ist eingestürzt!
+GAMEOVER_LIVES,Too many mistakes. You're fired.,Zu viele Fehler. Sie sind gefeuert.
+GAMEOVER_PILE,Your inbox crashed the computer!,Ihr Posteingang hat den Rechner abgeschossen!
 GAMEOVER_SCORE,Score: {v},Punkte: {v}
 GAMEOVER_BEST,Best: {v},Rekord: {v}
 GAMEOVER_NEW_BEST,NEW HIGHSCORE!,NEUER REKORD!
 GAMEOVER_STATS,Sorted {sorted}  ·  Accuracy {acc}%  ·  Max combo {combo}  ·  {time}s,Sortiert {sorted}  ·  Trefferquote {acc}%  ·  Max-Combo {combo}  ·  {time}s
 GAMEOVER_RESTART,Tap or press any key to try again,Tippen oder Taste drücken für neuen Versuch
-BTN_LANGUAGE,🌐 Deutsch,🌐 English
+BTN_LANGUAGE,Deutsch,English

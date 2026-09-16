@@ -10,9 +10,9 @@ static func create() -> Array[SortRule]:
 	var rules: Array[SortRule] = [
 		SortRule.create(C.CAPS, Cat.SPAM),
 		SortRule.create(C.DIGITS_IN_ADDRESS, Cat.PHISHING),
-		SortRule.create(C.MANY_EMOJIS, Cat.SPAM),
+		SortRule.create(C.MANY_SMILEYS, Cat.SPAM),
 		SortRule.create(C.EXE_ATTACHMENT, Cat.PHISHING),
-		SortRule.create(C.XYZ_DOMAIN, Cat.SPAM),
+		SortRule.create(C.BIZ_DOMAIN, Cat.SPAM),
 		SortRule.create(C.EXCLUSIVE, Cat.NEWSLETTER),
 		SortRule.create(C.URGENT, Cat.IMPORTANT),
 		SortRule.create(C.BIG_AMOUNT, Cat.PHISHING),

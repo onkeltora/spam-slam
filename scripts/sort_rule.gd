@@ -10,9 +10,9 @@ extends Resource
 enum Condition {
 	CAPS,
 	DIGITS_IN_ADDRESS,
-	MANY_EMOJIS,
+	MANY_SMILEYS,
 	EXE_ATTACHMENT,
-	XYZ_DOMAIN,
+	BIZ_DOMAIN,
 	EXCLUSIVE,
 	URGENT,
 	BIG_AMOUNT,
@@ -27,9 +27,9 @@ enum Condition {
 const CONDITION_KEYS := {
 	Condition.CAPS: "COND_CAPS",
 	Condition.DIGITS_IN_ADDRESS: "COND_DIGITS",
-	Condition.MANY_EMOJIS: "COND_EMOJIS",
+	Condition.MANY_SMILEYS: "COND_SMILEYS",
 	Condition.EXE_ATTACHMENT: "COND_EXE",
-	Condition.XYZ_DOMAIN: "COND_XYZ",
+	Condition.BIZ_DOMAIN: "COND_BIZ",
 	Condition.EXCLUSIVE: "COND_EXCLUSIVE",
 	Condition.URGENT: "COND_URGENT",
 	Condition.BIG_AMOUNT: "COND_AMOUNT",
@@ -41,7 +41,7 @@ const CONDITION_KEYS := {
 	Condition.CORP_SECURITY: "COND_CORP_SECURITY",
 }
 
-const MANY_EMOJIS_THRESHOLD := 3
+const MANY_SMILEYS_THRESHOLD := 3
 const BIG_AMOUNT_THRESHOLD := 1000
 
 @export var condition: Condition = Condition.CAPS
@@ -71,12 +71,12 @@ func matches(mail: MailData) -> bool:
 			return mail.caps and not mail.no_subject
 		Condition.DIGITS_IN_ADDRESS:
 			return mail.digits_in_address
-		Condition.MANY_EMOJIS:
-			return mail.emoji_count >= MANY_EMOJIS_THRESHOLD and not mail.no_subject
+		Condition.MANY_SMILEYS:
+			return mail.smiley_count >= MANY_SMILEYS_THRESHOLD and not mail.no_subject
 		Condition.EXE_ATTACHMENT:
 			return mail.attachment_ext == "exe"
-		Condition.XYZ_DOMAIN:
-			return mail.xyz_domain
+		Condition.BIZ_DOMAIN:
+			return mail.get_domain().ends_with(".biz")
 		Condition.EXCLUSIVE:
 			return mail.exclusive and not mail.no_subject
 		Condition.URGENT:
@@ -106,13 +106,13 @@ func make_match(mail: MailData) -> void:
 			mail.caps = true
 		Condition.DIGITS_IN_ADDRESS:
 			mail.set_digits_in_address(true)
-		Condition.MANY_EMOJIS:
+		Condition.MANY_SMILEYS:
 			mail.no_subject = false
-			mail.set_emoji_count(randi_range(MANY_EMOJIS_THRESHOLD, 5))
+			mail.set_smiley_count(randi_range(MANY_SMILEYS_THRESHOLD, 5))
 		Condition.EXE_ATTACHMENT:
 			mail.attachment_ext = "exe"
-		Condition.XYZ_DOMAIN:
-			mail.xyz_domain = true
+		Condition.BIZ_DOMAIN:
+			mail.biz_domain = true
 		Condition.EXCLUSIVE:
 			mail.no_subject = false
 			mail.exclusive = true
@@ -140,7 +140,7 @@ func make_match(mail: MailData) -> void:
 			mail.set_kind(MailData.SenderKind.SECURITY)
 			mail.company_domain = true
 			mail.lookalike_company_domain = false
-			mail.xyz_domain = false
+			mail.biz_domain = false
 
 
 ## Modifies the mail so it LOOKS close to the rule but does not match.
@@ -153,12 +153,12 @@ func make_near_miss(mail: MailData) -> void:
 		Condition.DIGITS_IN_ADDRESS:
 			mail.set_digits_in_address(false)
 			mail.amount = randi_range(2, 60) * 25
-		Condition.MANY_EMOJIS:
-			mail.set_emoji_count(2)
+		Condition.MANY_SMILEYS:
+			mail.set_smiley_count(2)
 		Condition.EXE_ATTACHMENT:
 			mail.attachment_ext = "zip"
-		Condition.XYZ_DOMAIN:
-			mail.xyz_domain = false
+		Condition.BIZ_DOMAIN:
+			mail.biz_domain = false
 		Condition.EXCLUSIVE:
 			mail.exclusive = false
 			mail.urgent = true
@@ -169,7 +169,7 @@ func make_near_miss(mail: MailData) -> void:
 			mail.amount = randi_range(10, 20) * 50
 		Condition.CAT:
 			mail.has_cat = false
-			mail.set_emoji_count(2)
+			mail.set_smiley_count(2)
 		Condition.COMPANY_LINK:
 			mail.set_kind([MailData.SenderKind.NEWSLETTER, MailData.SenderKind.STRANGER].pick_random())
 			mail.has_link = true

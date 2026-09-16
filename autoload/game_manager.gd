@@ -5,6 +5,7 @@ extends Node
 
 signal game_started
 signal game_over(reason: String)  # "lives" | "pile"
+signal mail_presented(mail: MailData)  # a mail moved to the front and is readable now
 signal mail_sorted(result: Dictionary)
 signal score_changed(score: int)
 signal combo_changed(combo: int, multiplier: int)

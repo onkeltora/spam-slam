@@ -64,9 +64,9 @@ func _add_noise(mail: MailData) -> void:
 
 	var r := randf()
 	if loud:
-		mail.set_emoji_count(0 if r < 0.55 else 1 if r < 0.77 else 2 if r < 0.91 else randi_range(3, 4))
+		mail.set_smiley_count(0 if r < 0.55 else 1 if r < 0.77 else 2 if r < 0.91 else randi_range(3, 4))
 	else:
-		mail.set_emoji_count(0 if r < 0.8 else 1 if r < 0.93 else 2 if r < 0.98 else 3)
+		mail.set_smiley_count(0 if r < 0.8 else 1 if r < 0.93 else 2 if r < 0.98 else 3)
 
 	var is_catfacts := kind == K.NEWSLETTER and mail.sender_index == 1
 	mail.has_cat = randf() < (0.35 if is_catfacts else 0.04)
@@ -77,12 +77,12 @@ func _add_noise(mail: MailData) -> void:
 		mail.urgent = true
 
 	mail.set_digits_in_address(randf() < (0.15 if kind == K.STRANGER else 0.05))
-	mail.xyz_domain = randf() < (0.12 if kind == K.STRANGER else 0.04)
+	mail.biz_domain = randf() < (0.12 if kind == K.STRANGER else 0.04)
 	mail.no_subject = randf() < 0.03
 
 	if randf() < (0.3 if kind == K.COMPANY else 0.12):
 		var e := randf()
-		mail.attachment_ext = "pdf" if e < 0.4 else "docx" if e < 0.7 else "zip" if e < 0.88 else "exe"
+		mail.attachment_ext = "pdf" if e < 0.4 else "doc" if e < 0.7 else "zip" if e < 0.88 else "exe"
 	if kind != K.SECURITY:
 		mail.has_link = randf() < (0.06 if kind == K.COMPANY else 0.2)
 	if randf() < (0.15 if kind == K.STRANGER or kind == K.SECURITY else 0.06):

@@ -1,8 +1,8 @@
 extends Control
-## Hearts in the top-right corner. Lost hearts stay as empty outlines.
+## Hearts below the score (left-aligned). Lost hearts stay as empty outlines.
 
-const HEART_SIZE := 34.0
-const SPACING := 40.0
+const HEART_SIZE := 26.0
+const SPACING := 30.0
 
 var _lives := GameManager.START_LIVES
 var _pop := 0.0
@@ -29,8 +29,7 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var slots := maxi(GameManager.START_LIVES, _lives)
 	for i in slots:
-		# Right-aligned: slot 0 is the leftmost heart.
-		var center := Vector2(size.x - HEART_SIZE * 0.5 - (slots - 1 - i) * SPACING, size.y * 0.5)
+		var center := Vector2(HEART_SIZE * 0.5 + 2.0 + i * SPACING, size.y * 0.5)
 		var s := HEART_SIZE
 		if i == _pop_index and _pop > 0.0:
 			s *= 1.0 + sin(_pop * PI) * 0.5
