@@ -1,0 +1,267 @@
+extends Node2D
+## Main scene: spawns mails into the inbox queue, reads swipes/keys,
+## resolves sorts via GameManager and plays all the world feedback.
+
+const CARD_HOME := Vector2(640, 400)
+const SWIPE_COMMIT_DISTANCE := 90.0    # drag this far = sorted, even while still holding
+const SWIPE_RELEASE_DISTANCE := 45.0   # releasing after this distance also sorts
+const SWIPE_FLICK_DISTANCE := 28.0     # short but fast flicks count too
+const SWIPE_FLICK_SPEED := 1100.0
+const DRAG_FOLLOW := 0.6
+const DRAG_MAX := 110.0
+const EMPTY_INBOX_SPAWN_BOOST := 2.5   # empty inbox = next mail comes faster
+const GAME_OVER_SCREEN_DELAY := 1.2
+
+@onready var camera: Camera2D = $Camera2D
+@onready var pile: InboxPile = %Pile
+@onready var cards: Node2D = %Cards
+@onready var basket_root: Node2D = %Baskets
+@onready var fx: Node2D = %FX
+@onready var overlay: CanvasLayer = %Overlay
+
+var queue: Array[MailData] = []
+var front_card: MailCard = null
+var baskets := {}  # MailData.Category -> Basket
+
+var _spawn_timer := 0.0
+var _shake := 0.0
+var _touch_index := -1
+var _touch_start := Vector2.ZERO
+var _swipe_done := false
+
+
+func _ready() -> void:
+	for dir in GameManager.DEFAULT_LAYOUT:
+		var basket := Basket.new()
+		basket.z_index = 5
+		basket_root.add_child(basket)
+		basket.setup(GameManager.DEFAULT_LAYOUT[dir], dir)
+		baskets[basket.category] = basket
+
+	GameManager.screen_shake.connect(func(intensity: float) -> void: _shake = maxf(_shake, intensity))
+	GameManager.baskets_swapped.connect(_on_baskets_swapped)
+	GameManager.game_over.connect(_on_game_over)
+	GameManager.boost_started.connect(func(_d: float) -> void:
+		for basket in baskets.values():
+			_burst(basket.position, Color("c47a2c"), 18))
+	overlay.start_requested.connect(_start_run)
+	overlay.show_title()
+
+	if OS.is_debug_build() and "--autoplay" in OS.get_cmdline_user_args():
+		var bot: Node = load("res://scripts/debug/autoplay.gd").new()
+		bot.main = self
+		add_child(bot)
+
+
+func _start_run() -> void:
+	for card in cards.get_children():
+		card.queue_free()
+	front_card = null
+	queue.clear()
+	pile.reset()
+	GameManager.start_game()
+	for basket in baskets.values():
+		basket.move_to_slot(_dir_of_category(basket.category))
+	_spawn_timer = 0.0
+	_spawn_mail()
+
+
+func _process(delta: float) -> void:
+	_update_shake(delta)
+	if not GameManager.running:
+		return
+	if GameManager.spawn_pause <= 0.0:
+		_spawn_timer += delta * (EMPTY_INBOX_SPAWN_BOOST if queue.is_empty() else 1.0)
+		var interval := GameManager.get_spawn_interval()
+		if _spawn_timer >= interval:
+			_spawn_timer -= interval
+			_spawn_mail()
+
+
+func _update_shake(delta: float) -> void:
+	_shake = move_toward(_shake, 0.0, delta * 45.0)
+	camera.offset = Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake
+
+
+# --- Inbox queue ---
+
+func _spawn_mail() -> void:
+	var mail := GameManager.create_next_mail()
+	queue.append(mail)
+	if front_card == null:
+		mail.pile_drop = 0.0
+		_bring_next_to_front(false)
+	else:
+		pile.set_mails(queue.slice(1))
+	GameManager.set_pile_count(queue.size())
+
+
+func _bring_next_to_front(from_pile: bool) -> void:
+	if queue.is_empty():
+		front_card = null
+		pile.set_mails([])
+		return
+	var card := MailCard.new()
+	card.z_index = 2
+	cards.add_child(card)
+	var start := CARD_HOME + (Vector2(0, -InboxPile.LAYER_OFFSET) if from_pile else Vector2(0, -150))
+	card.setup(queue[0], start)
+	card.scale = Vector2.ONE * (0.97 if from_pile else 0.85)
+	if not from_pile:
+		card.modulate.a = 0.0
+	var duration := GameManager.get_slide_duration()
+	var tween := card.create_tween().set_parallel()
+	tween.tween_property(card, "base_position", CARD_HOME, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "scale", Vector2.ONE, duration)
+	tween.tween_property(card, "modulate:a", 1.0, duration * 0.6)
+	front_card = card
+	pile.set_mails(queue.slice(1))
+	if from_pile:
+		pile.advance()
+
+
+# --- Input ---
+
+func _unhandled_input(event: InputEvent) -> void:
+	if not GameManager.running:
+		return
+	if event is InputEventKey and event.pressed and not event.echo:
+		var dir := _dir_from_key(event.keycode)
+		if dir >= 0:
+			_sort_front(dir)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		if event.pressed and _touch_index == -1:
+			_touch_index = event.index
+			_touch_start = event.position
+			_swipe_done = false
+		elif not event.pressed and event.index == _touch_index:
+			var d: Vector2 = event.position - _touch_start
+			if not _swipe_done and d.length() >= SWIPE_RELEASE_DISTANCE:
+				_sort_front(_dir_from_vector(d))
+			_touch_index = -1
+			_set_drag(Vector2.ZERO)
+	elif event is InputEventScreenDrag and event.index == _touch_index and not _swipe_done:
+		var d: Vector2 = event.position - _touch_start
+		var flick: bool = d.length() >= SWIPE_FLICK_DISTANCE and event.velocity.length() >= SWIPE_FLICK_SPEED
+		if d.length() >= SWIPE_COMMIT_DISTANCE or flick:
+			_swipe_done = true
+			_sort_front(_dir_from_vector(d))
+			_set_drag(Vector2.ZERO)
+		else:
+			_set_drag(d)
+
+
+func _set_drag(d: Vector2) -> void:
+	if front_card != null:
+		front_card.set_drag((d * DRAG_FOLLOW).limit_length(DRAG_MAX))
+	var preview_dir := _dir_from_vector(d) if d.length() > 12.0 else -1
+	var amount := clampf(d.length() / SWIPE_COMMIT_DISTANCE, 0.0, 1.0)
+	for basket in baskets.values():
+		basket.set_preview(amount if basket.dir == preview_dir else 0.0)
+
+
+func _dir_from_vector(v: Vector2) -> int:
+	if absf(v.x) > absf(v.y):
+		return GameManager.Dir.RIGHT if v.x > 0 else GameManager.Dir.LEFT
+	return GameManager.Dir.DOWN if v.y > 0 else GameManager.Dir.UP
+
+
+func _dir_from_key(keycode: Key) -> int:
+	match keycode:
+		KEY_UP, KEY_W:
+			return GameManager.Dir.UP
+		KEY_DOWN, KEY_S:
+			return GameManager.Dir.DOWN
+		KEY_LEFT, KEY_A:
+			return GameManager.Dir.LEFT
+		KEY_RIGHT, KEY_D:
+			return GameManager.Dir.RIGHT
+	return -1
+
+
+func _dir_of_category(category: MailData.Category) -> int:
+	for dir in GameManager.basket_layout:
+		if GameManager.basket_layout[dir] == category:
+			return dir
+	return 0
+
+
+# --- Sorting & feedback ---
+
+func _sort_front(dir: int) -> void:
+	if front_card == null or queue.is_empty():
+		return
+	var mail: MailData = queue.pop_front()
+	var card := front_card
+	front_card = null
+
+	var result := GameManager.sort_mail(mail, dir)
+	var chosen: Basket = baskets[result.chosen]
+	card.fly_to(chosen.position)
+
+	if result.correct:
+		chosen.gulp()
+		_burst(chosen.position, MailData.CATEGORY_COLORS[result.chosen], 14 + GameManager.get_multiplier() * 4)
+		var label := "+%d" % result.points
+		FloatingText.spawn(fx, chosen.position + Vector2(0, -20), label, Color("fff4d6"), 26 + GameManager.get_multiplier() * 3, 0.7)
+		_shake = maxf(_shake, 2.0 + GameManager.get_multiplier())
+	else:
+		chosen.reject()
+		var correct_basket: Basket = baskets[result.correct_category]
+		correct_basket.flash_correct()
+		_burst(chosen.position, Color(1, 0.2, 0.15), 22)
+		FloatingText.spawn(fx, CARD_HOME + Vector2(0, -150), "✗ " + result.reason, Color("ff6a5a"), 26, 1.6)
+
+	if GameManager.running:
+		GameManager.set_pile_count(queue.size())
+		_bring_next_to_front(true)
+
+
+func _burst(pos: Vector2, color: Color, amount: int) -> void:
+	var p := CPUParticles2D.new()
+	p.position = pos
+	p.z_index = 10
+	p.amount = amount
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.lifetime = 0.6
+	p.direction = Vector2.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 140.0
+	p.initial_velocity_max = 380.0
+	p.gravity = Vector2(0, 700)
+	p.damping_min = 60.0
+	p.damping_max = 120.0
+	p.scale_amount_min = 4.0
+	p.scale_amount_max = 9.0
+	p.angular_velocity_min = -400.0
+	p.angular_velocity_max = 400.0
+	var fade := Gradient.new()
+	fade.set_color(0, color.lightened(0.3))
+	fade.set_color(1, Color(color, 0.0))
+	p.color_ramp = fade
+	fx.add_child(p)
+	p.emitting = true
+	p.finished.connect(p.queue_free)
+
+
+func _on_baskets_swapped(_a: int, _b: int) -> void:
+	for basket in baskets.values():
+		basket.move_to_slot(_dir_of_category(basket.category))
+	_shake = maxf(_shake, 10.0)
+
+
+func _on_game_over(reason: String) -> void:
+	_touch_index = -1
+	_set_drag(Vector2.ZERO)
+	if reason == "pile":
+		pile.collapse()
+		_shake = 30.0
+	else:
+		_shake = 18.0
+	if front_card != null:
+		front_card.fall()
+		front_card = null
+	await get_tree().create_timer(GAME_OVER_SCREEN_DELAY).timeout
+	overlay.show_game_over(reason)
