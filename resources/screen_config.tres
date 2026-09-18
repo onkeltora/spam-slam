@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ScreenConfig" format=3 uid="uid://gvup0ekclt6i"]
+
+[ext_resource type="Script" uid="uid://dngyyg68s6s5g" path="res://scripts/world/screen_config.gd" id="1_cfg"]
+
+[resource]
+script = ExtResource("1_cfg")
+corner_radius = 0.0
+bulge_horizontal = 8.0
+bulge_vertical = 8.0
+taskbar_offset = Vector2(0, -10)
+start_button_offset = Vector2(17, 0)
+tray_offset = Vector2(-17, 0)

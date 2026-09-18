@@ -13,6 +13,10 @@ const EQ_BANDS := 6
 const EQ_SMOOTHING := 14.0
 const BOSS_RESULT_BLINK := 1.8
 
+## Placement comes from resources/screen_config.tres (taskbar_offset,
+## start_button_offset, tray_offset, clock_offset) -- the tube face's rounded corners
+## cut into the bar's ends, so the offsets have to be tuned against the same shape.
+
 var _count := 0
 var _max := GameManager.PILE_MAX
 var _time := 0.0
@@ -60,7 +64,9 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
+	var cfg := ScreenLayout.config()
 	var bar := ScreenLayout.taskbar_rect()
+	bar.position += cfg.taskbar_offset
 	draw_rect(bar, ScreenLayout.WINDOW_GREY)
 	draw_line(bar.position, Vector2(bar.end.x, bar.position.y), ScreenLayout.BEVEL_LIGHT, 2.0)
 
@@ -68,7 +74,7 @@ func _draw() -> void:
 	var inner_h := bar.size.y - 7
 
 	# Start button
-	var start := Rect2(bar.position.x + 4, inner_y, START_WIDTH, inner_h)
+	var start := Rect2(Vector2(bar.position.x, inner_y) + cfg.start_button_offset, Vector2(START_WIDTH, inner_h))
 	ScreenLayout.draw_raised(self, start)
 	PixelIcons.draw_centered(self, PixelIcons.Icon.ENVELOPE, Vector2(start.position.x + 15, start.get_center().y), 18)
 	DrawUtil.text_left(self, tr("OS_START"), Vector2(start.position.x + 28, start.get_center().y), 16,
@@ -76,17 +82,17 @@ func _draw() -> void:
 
 	var inbox := Rect2(start.end.x + 8, inner_y, INBOX_WIDTH, inner_h)
 	_draw_inbox_button(inbox)
+	var tray := Rect2(Vector2(bar.end.x - TRAY_WIDTH, inner_y) + cfg.tray_offset, Vector2(TRAY_WIDTH, inner_h))
 	if _app_title != "":
-		var tray_x := bar.end.x - TRAY_WIDTH - 4
-		var app := Rect2(inbox.end.x + 6, inner_y, tray_x - inbox.end.x - 12, inner_h)
+		var app := Rect2(inbox.end.x + 6, inner_y, tray.position.x - inbox.end.x - 12, inner_h)
 		ScreenLayout.draw_sunken(self, app, Color("dcd9cf"), 1.5)
 		DrawUtil.text_left(self, _app_title, Vector2(app.position.x + 8, app.get_center().y),
 				DrawUtil.fit_size(_app_title, 15, app.size.x - 16), ScreenLayout.TEXT_DARK, -1, 1, ScreenLayout.TEXT_DARK)
 
-	_draw_tray(Rect2(bar.end.x - TRAY_WIDTH - 4, inner_y, TRAY_WIDTH, inner_h))
+	_draw_tray(tray, cfg.clock_offset)
 
 
-func _draw_tray(tray: Rect2) -> void:
+func _draw_tray(tray: Rect2, clock_offset: Vector2) -> void:
 	ScreenLayout.draw_sunken(self, tray, ScreenLayout.WINDOW_GREY, 1.5)
 	var cy := tray.get_center().y
 
@@ -110,7 +116,7 @@ func _draw_tray(tray: Rect2) -> void:
 
 	# Clock
 	var minutes := DAY_START_MINUTES + int(GameManager.elapsed)
-	DrawUtil.text_centered(self, "%d:%02d" % [minutes / 60, minutes % 60], Vector2(tray.end.x - 30, cy), 15, ScreenLayout.TEXT_DARK)
+	DrawUtil.text_centered(self, "%d:%02d" % [minutes / 60, minutes % 60], Vector2(tray.end.x - 30, cy) + clock_offset, 15, ScreenLayout.TEXT_DARK)
 
 
 func _draw_inbox_button(rect: Rect2) -> void:

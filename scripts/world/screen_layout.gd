@@ -7,6 +7,20 @@ const BEZEL_RECT := Rect2(168, 4, 944, 632)
 const SCREEN_RECT := Rect2(200, 30, 880, 568)
 const SCREEN_CORNER_RADIUS := 16.0
 const TASKBAR_HEIGHT := 34.0
+
+## Tube shape + screen furniture placement, all Inspector-editable in one file.
+const CONFIG: ScreenConfig = preload("res://resources/screen_config.tres")
+
+
+static func config() -> ScreenConfig:
+	return CONFIG
+
+
+## The rect the CRT shader's ColorRect covers: SCREEN_RECT plus the per-axis bulge, so
+## there is real picture out to the widest point of the tube face.
+static func tube_rect() -> Rect2:
+	var b := CONFIG.tube_bulge()
+	return SCREEN_RECT.grow_individual(b.x, b.y, b.x, b.y)
 ## Desktop area above the taskbar.
 const DESKTOP_RECT := Rect2(200, 30, 880, 534)
 
@@ -15,10 +29,33 @@ const CARD_HOME := Vector2(640, 290)
 ## Folder icon centers per swipe direction (GameManager.Dir order: UP, DOWN, LEFT, RIGHT).
 const FOLDER_SLOTS := [
 	Vector2(640, 72),
-	Vector2(640, 476),
+	Vector2(640, 452),
 	Vector2(272, 290),
 	Vector2(1008, 290),
 ]
+
+## 60er era: no monitor bezel, so the whole desk canvas is free -- gives the paper
+## letter (PaperLetterCard, real DIN-A4 proportions) room to actually look like a
+## page instead of a little note. DOWN sits off-center, right of the typewriter
+## (desk.gd TYPEWRITER_CENTER), so it doesn't have to share the vertical column
+## the letter grows into.
+const CARD_HOME_SIXTIES := Vector2(640, 360)
+const FOLDER_SLOTS_SIXTIES := [
+	Vector2(640, 50),
+	Vector2(950, 625),
+	Vector2(250, 360),
+	Vector2(1060, 360),
+]
+
+
+## Era-aware card home / tray slots -- use these instead of the CARD_HOME/FOLDER_SLOTS
+## consts directly so the 60er's bigger letter gets its own layout.
+static func card_home() -> Vector2:
+	return CARD_HOME if EraManager.current().has_monitor else CARD_HOME_SIXTIES
+
+
+static func folder_slots() -> Array:
+	return FOLDER_SLOTS if EraManager.current().has_monitor else FOLDER_SLOTS_SIXTIES
 
 const DESKTOP_COLOR := Color("0f7f7f")
 const WINDOW_GREY := Color("c9c6bb")

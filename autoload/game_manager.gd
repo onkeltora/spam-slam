@@ -127,8 +127,8 @@ func start_game() -> void:
 	is_new_highscore = false
 	boss_challenge_active = false
 	boss_progress = 0
-	_rule_pool = RulePool.create()
-	_mails_until_rule_event = FIRST_RULE_AFTER
+	_rule_pool = RulePool.create(EraManager.get_allowed_conditions())
+	_mails_until_rule_event = roundi(FIRST_RULE_AFTER * float(EraManager.current().rule_change_scale))
 	_rule_events = 0
 	_mails_until_boss = randi_range(BOSS_EVERY_MIN, BOSS_EVERY_MAX)
 	running = true
@@ -158,7 +158,7 @@ func get_spawn_interval() -> float:
 		interval = lerpf(SPAWN_INTERVAL_RAMPED, SPAWN_INTERVAL_FLOOR, t)
 	if is_boosting():
 		interval *= BOOST_SPAWN_FACTOR
-	return interval
+	return interval * float(EraManager.current().spawn_interval_scale)
 
 
 func get_slide_duration() -> float:
@@ -179,8 +179,8 @@ func create_next_mail() -> MailData:
 	_mails_until_boss -= 1
 	if _mails_until_boss <= 0 and not boss_challenge_active:
 		_mails_until_boss = randi_range(BOSS_EVERY_MIN, BOSS_EVERY_MAX)
-		return _generator.generate_boss()
-	return _generator.generate(active_rule)
+		return _generator.generate_boss(EraManager.current())
+	return _generator.generate(active_rule, EraManager.current())
 
 
 func get_correct_category(mail: MailData) -> MailData.Category:
@@ -276,7 +276,8 @@ func set_pile_count(count: int) -> void:
 
 func _advance_rule() -> void:
 	_rule_events += 1
-	_mails_until_rule_event = randi_range(RULE_CHANGE_MIN, RULE_CHANGE_MAX)
+	var scale := float(EraManager.current().rule_change_scale)
+	_mails_until_rule_event = roundi(randi_range(RULE_CHANGE_MIN, RULE_CHANGE_MAX) * scale)
 	spawn_pause = RULE_ANNOUNCE_PAUSE
 	if active_rule != null and _rule_events % REORG_EVERY == 0:
 		_reorg_baskets()

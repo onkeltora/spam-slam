@@ -5,7 +5,12 @@
 
 ## Projekt
 Reaktions-Sortier-Arcade (Godot 4.7, GDScript, GL Compatibility, Landscape 1280×720, mobile-first).
-Aktueller Stand: **MVP-Prototyp** laut GDD Abschnitt 12 – Kernloop zum Testen von Gefühl & Tempo.
+Kernloop (GDD Abschnitt 12) ist gebaut und läuft; onkeltora hat entschieden, ab hier Richtung
+**vollwertiges Spiel** weiterzubauen statt neue Prototyp-Features. Vorgehen: erst das Rückgrat
+(Meta-Progression), danach eine Ären-Skin-Abstraktion, erst dann Content pro Ära – beides jetzt
+gebaut (siehe "Meta-Progression" und "Ären-System" unten), weil die DullOS-98-Oberfläche technisch
+die Rendering-Schicht des gesamten Spiels war (MailCard/SortFolder/ScreenLayout etc.), nicht nur
+"Ären-Content 90er", und sonst nachträglich hätte verallgemeinert werden müssen.
 
 ## Festgelegte Design-Entscheidungen (Prototyp v1)
 - **Setting ~1999–2004:** Ego-Blick auf einen Röhrenmonitor („DullTron 17"“) mit Fantasie-OS **DullOS 98**
@@ -37,9 +42,71 @@ Aktueller Stand: **MVP-Prototyp** laut GDD Abschnitt 12 – Kernloop zum Testen 
 - **Chef-Mail:** golden, gehört immer in WICHTIG → Challenge „5 Mails fehlerfrei“ → +1 Leben (max 5).
 - **Sprache:** Basissprache Englisch, Deutsch via `localization/strings.csv`. Alle Texte über `tr()`-Keys.
 
+## Meta-Progression (Rückgrat, erster Baustein Richtung Vollversion)
+Bewusst als **Skelett** gebaut, nicht als voller Ären-Content: eine Währung, ein sequenzieller Shop
+mit zwei reinen Deko-Items, um den Loop "Run → Budget-Punkte → Meta-Screen → Kauf → sichtbar auf
+dem Tisch" zu beweisen. Bewusst noch NICHT gebaut: alles, was Spielbalance/Tempo berührt
+(Auto-Filter-Slots), eine zweite Währung (Kaffeebohnen), Diegetisierung des Shops (eigenes
+DullOS-Programm statt Overlay).
+- **`autoload/meta_progress.gd`:** Budget-Punkte = `GameManager.score * SCORE_TO_BUDGET` (aktuell
+  0,1, reiner Platzhalter-Umrechnungsfaktor – GDD Abschnitt 8 lässt den Faktor offen) bei jedem
+  `GameManager.game_over`, unabhängig vom Run-Ausgang. Eigene Speicherdatei `user://progress.cfg`
+  (nicht `save.cfg` von GameManager). `persist`-Flag wie `GameManager.persist_highscore`, vom Bot
+  auf `false` gesetzt. `save_path` ist bewusst überschreibbar, damit Tests durch eine Scratch-Datei
+  roundtripen können, ohne je die echte Datei anzufassen. `spend(amount)` ist der generische Zugriff,
+  den andere Systeme (z. B. `EraManager`) für ihre eigenen Käufe aus demselben Budget nutzen.
+- **`ITEMS`-Array:** sequenziell – nur `next_item()` ist kaufbar, entspricht "Schreibtisch als
+  Fortschrittsbalken" (GDD Abschnitt 9). Neues Item = ein Eintrag in `ITEMS` + `SHOP_ITEM_*`-Key in
+  der CSV + ein `_draw_xxx()`-Case in `desk.gd` (inkl. `_on_item_purchased`-Pop-in-Animation) +
+  Koordinaten, die HUD-Widgets (Score/Leben links oben, Kaffeetasse unten links) und die Monitor-
+  Bezel/AOFF-CD/Postit NICHT überschneiden. Freie Zonen: links x 0-168 (außer AOFF-CD-Bereich
+  y 258-378 und Kaffeetassen-HUD y 530-660), rechts x 1112-1280 (außer Postit oben und der
+  Kaffeering-Deko bei (1190,330)).
+- **Meta-Screen:** kein eigenes System, sondern `Overlay.Mode.SHOP`/`Mode.ERA_SHOP` – zwei weitere
+  Zustände im bestehenden Title-/Game-Over-Overlay, erscheinen NUR direkt nach Game Over (Tap auf
+  die Statistiken → Deko-Shop → Tap → Ären-Shop → Tap startet den nächsten Run; Tap auf „Kaufen“
+  kauft und bleibt im jeweiligen Shop). Bewusst schlicht/nicht-diegetisch, siehe "Bewusst NICHT" oben.
+
+## Ären-System
+Löst die harte Kopplung der DullOS-98-Optik an die generische Spiellogik (siehe "Projekt" oben) und
+liefert die erste neue Ära. Zwei Ären sind aktuell gebaut: **90er** (Retrofit der bisherigen Optik,
+unverändertes Gefühl, von Anfang an freigeschaltet) und **60er** (reine Papierpost, kein Monitor,
+GDD Abschnitt 8 Punkt 1) – kaufbar im Ären-Shop, Kauf schaltet sofort um (kein Zurück-Umschalten
+per UI, siehe `EraManager`-Kommentar). Bewusst noch NICHT gebaut: Telex/70er-80er, 2000er-Spam-
+Explosion, KI-Ära, Auto-Filter-Slots, echte GDD-8b-Hybrid-Mechanik (Papier UND digital gleichzeitig
+mit wanderndem Verhältnis – `paper_ratio` ist als Zahl zwischen 0.0/1.0 vorbereitet, aber nur die
+Extremwerte sind belegt).
+- **`autoload/era_manager.gd`:** `ERAS`-Array (wie `MetaProgress.ITEMS`) mit `has_monitor`,
+  `paper_ratio`, `allowed_conditions` (Tag, aufgelöst über `get_allowed_conditions()`),
+  `spawn_interval_scale`/`rule_change_scale` fürs 60er-Tempo. Eigene Speicherdatei `user://era.cfg`,
+  gleiches `persist`/`save_path`-Muster wie `MetaProgress`. Neue Ära = Eintrag in `ERAS` + `ERA_*`-Key
+  in der CSV + ggf. neue `MEDIUM_AGNOSTIC`-Einträge in `sort_rule.gd`, falls neue Regeln dazukommen.
+- **Medium statt Ären-Fallunterscheidung überall:** `MailData.Medium` (DIGITAL/PAPER) wird pro Mail
+  von `MailGenerator` aus `era.paper_ratio` gewürfelt – NICHT die Ära direkt. `main.gd` branch't beim
+  Karten-Erzeugen auf `mail.medium`, nicht auf die Ära; eine künftige Misch-Ära (Papier + digital
+  gleichzeitig, GDD 8b) braucht dadurch keine neue Logik an dieser Stelle.
+- **Basisklassen-Split** (Vererbung, kein Duck-Typing): `MailPresenter` (Drag/Hit-Test/Fly-in) →
+  `MailCard` (98-Chrome) / `PaperLetterCard` (Brief, Briefmarke/Wachssiegel, kein Pixel-Smiley-Icon –
+  die sind laut "Zeitkolorit-Deko" oben ein 90er/2000er-Ding). `SortTarget` (Preview/Gulp/Shake) →
+  `SortFolder` (Desktop-Icon) / `PaperTray` (Ablagekorb). `main.gd._rebuild_targets()` baut die 4
+  Zielfächer **pro Run neu** (nicht nur in `_ready()`), weil die Ära zwischen Runs im Shop wechseln kann.
+- **Regel-Filter:** `SortRule.MEDIUM_AGNOSTIC`/`medium_agnostic_conditions()` markiert Bedingungen,
+  die ohne Monitor/E-Mail-Konzepte auskommen (bewusste Fail-safe-Liste: alles Ungelistete gilt als
+  digital-only). `RulePool.create(allowed)` filtert damit; 6. Touch-Point neben den 5 im Kopf-
+  kommentar von `sort_rule.gd`.
+- **Monitor-Subsysteme:** `main.gd._apply_era_visuals()` blendet `Desktop`/`CRT`/`Bezel`/`Taskbar`/
+  `AppWindows` für `has_monitor == false` aus (Desktop-Icons zusätzlich per `main.gd._on_tap()`
+  entschärft, nicht nur unsichtbar). `InTrayMeter` (neu) ersetzt Taskbars Stapelanzeige als
+  physisches Schild auf dem Tisch. `ScreenOverlay`/`SystemDialog`/`BossToast` bekommen intern
+  `has_monitor`-Zweige (Papier-Absturz/Lampe-aus/Papier-Dialogkarte) statt eigener Subklassen, weil
+  jeweils nur eine Instanz existiert. `scripts/world/desk.gd` zeichnet ohne Monitor Schreibmaschine
+  + Wählscheibentelefon statt Monitorständer/Tastatur/AOFF-CD.
+
 ## Struktur
 ```
 autoload/game_manager.gd   Autoload: State, Signals, ALLE Balancing-Konstanten oben in der Datei
+autoload/meta_progress.gd  Autoload: Budget-Punkte + sequenzieller Deko-Shop, eigene Speicherdatei
+autoload/era_manager.gd    Autoload: welche Ären unlocked/aktiv sind, Ären-Konfiguration (siehe oben)
 autoload/music_manager.tscn  Autoload-SZENE: Playlist per Inspector (Tracks reinziehen), Music-Bus,
                            gedämpft (Low-Pass) auf Titel/Game Over, klar während eines Runs,
                            `get_spectrum(bands)` für Visualizer, Player-API (resume/pause/stop/
@@ -49,12 +116,21 @@ autoload/sound_manager.tscn  Autoload-SZENE: 8 Sound-Slots (SoundEvent) per Insp
 scripts/audio/sound_event.gd  Resource pro Sound: Varianten-Array, Lautstärke, Pitch-Streuung,
                            Combo-Pitch, Mindestabstand
 default_bus_layout.tres    Audio-Busse: Master, Music (Low-Pass + SpectrumAnalyzer), SFX
-scripts/main.gd            Spawner, Warteschlange, Swipe-/Tasten-Input, Welt-Feedback
-scripts/mail_data.gd       Mail = Flags (caps, emojis, attachment…) → Text wird daraus gebaut
-scripts/sort_rule.gd       Regel-Resource: matches / make_match / make_near_miss pro Condition
-scripts/rule_pool.gd       Regel-Pool (14 Regeln)
-scripts/mail_generator.gd  Zufallsmails; 40 % passend zur aktiven Regel, 15 % Beinahe-Treffer
+scripts/main.gd            Spawner, Warteschlange, Swipe-/Tasten-Input, Welt-Feedback, Ären-Umschaltung
+scripts/mail_data.gd       Mail = Flags (caps, emojis, attachment…) → Text wird daraus gebaut, + Medium
+scripts/sort_rule.gd       Regel-Resource: matches / make_match / make_near_miss pro Condition,
+                           MEDIUM_AGNOSTIC-Liste fürs Regel-Filtern
+scripts/rule_pool.gd       Regel-Pool (14 Regeln), optional nach Condition-Liste gefiltert
+scripts/mail_generator.gd  Zufallsmails; 40 % passend zur aktiven Regel, 15 % Beinahe-Treffer,
+                           würfelt Medium aus era.paper_ratio
 scripts/pixel_icons.gd     12x12-Pixel-Icons als Zeichen-Grids (Smileys, Katze, Absender-Symbole…)
+scripts/world/mail_presenter.gd  Basisklasse: Drag/Hit-Test/Fly-in-Physik, medium-unabhängig
+scripts/world/mail_card.gd       98er-Mail-Fenster (extends MailPresenter)
+scripts/world/paper_letter_card.gd  60er-Papierbrief (extends MailPresenter)
+scripts/world/sort_target.gd     Basisklasse: Preview/Gulp/Shake-Animation, medium-unabhängig
+scripts/world/sort_folder.gd     Desktop-Ordner-Icon (extends SortTarget)
+scripts/world/paper_tray.gd      60er-Ablagekorb (extends SortTarget)
+scripts/world/in_tray_meter.gd   60er-Ersatz für Taskbars Stapelanzeige, physisches Schild auf dem Tisch
 scripts/world/app_icons.gd Vektor-Logos der Parodie-Apps (OCQ-Blume, WhipAmp-Blitz, AOFF-Dreieck)
 scripts/world/app_windows.gd  Öffnet/schließt Desktop-Programme, Chef-Verlauf, Katzenbild-Slot
 scripts/world/apps/        RetroWindow (Basis: Rahmen, Titel, Zoom-Animation, on_tap, überschreibbares
@@ -62,10 +138,12 @@ scripts/world/apps/        RetroWindow (Basis: Rahmen, Titel, Zoom-Animation, on
 scripts/world/screen_layout.gd  ALLE Monitor-/Desktop-Maße + 98-Zeichenhelfer (raised/sunken/title bar)
 scripts/world/             Monitor-Szene: Desktop, Mail-Fenster, Ordner, Fenster-Kaskade, Taskleiste,
                            Messenger-Toast, Dialogbox, Bluescreen/Power-Off, CRT, Gehäuse, Post-it, Tisch
+                           (ScreenOverlay/SystemDialog/BossToast/desk.gd/InboxPile mit has_monitor-
+                           bzw. medium-Zweig fürs 60er-Äquivalent statt eigener Subklasse)
 shaders/crt.gdshader       CRT-Look (liest Screen-Texture; ColorRect über dem Bildschirmbereich).
                            Einstellungen (Helligkeit, Scanlines, Vignette …) als Inspector-Regler am
                            Node World/CRT (crt_effect.gd, @tool → live im Editor), NICHT im Material
-scripts/ui/                HUD außerhalb des Monitors (Punkte, Leben, Tasse, Portrait) + Title/Game-Over
+scripts/ui/                HUD außerhalb des Monitors (Punkte, Leben, Tasse, Portrait) + Title/Game-Over/Shops
 scripts/debug/autoplay.gd  Bot für Balancing, Screenshots und Regressionstests
 localization/strings.csv   keys,en,de
 ```
@@ -100,14 +178,21 @@ godot --headless --path . -- --autoplay --rule-test                         # Re
 godot --headless --path . -- --autoplay --music-test                        # MusicManager-Test (lautlos)
 godot --headless --path . -- --autoplay --sound-test                        # SoundManager-Test (lautlos)
 godot --path . -- --autoplay --app-test [--shots=/pfad]                     # Desktop-Programme per Tap/Swipe
+godot --path . -- --autoplay --shop-test [--shots=/pfad]                    # MetaProgress + Shop-Screen, echte Taps
+godot --path . -- --autoplay --era-test [--shots=/pfad]                     # EraManager: 60er + 90er-Retrofit
 godot --path . -- --autoplay --card-gallery --shots=/pfad [--lang=en]       # Screenshots kniffliger Layouts
 ```
 `--lang=en|de` setzt die Sprache nur für den Bot-Lauf (wird nicht gespeichert), `--crt=off` schaltet
-den CRT-Shader für den Lauf ab (z. B. für Helligkeitsvergleiche per Screenshot).
+den CRT-Shader für den Lauf ab (z. B. für Helligkeitsvergleiche per Screenshot), `--era=<id>` (z. B.
+`sixties`) schaltet die Ära für den Lauf per Dev-Override frei/aktiv, ohne den Ären-Shop-Preis zu zahlen.
 Achtung Godot 4: Ein pausierter AudioStreamPlayer meldet `playing == false` – Pause über `stream_paused` prüfen.
 Bekannt & harmlos: Beim Beenden meldet Godot manchmal „AudioStreamMP3 still in use“ (laufende Musik,
 Engine-Timing beim Shutdown).
 Der Bot speichert keinen Highscore.
 
-## Bewusst NICHT im Prototyp (GDD Abschnitt 12/14)
-Kopierer/Plotter, Aktenvernichter, Ären/Automatisierung, Währungen/Shop, Monetarisierung, Backlog-Ideen.
+## Bewusst noch NICHT gebaut
+Kopierer/Plotter, Aktenvernichter, Telex/70er-80er-Ära, 2000er-Spam-Explosions-Ära, KI-Ära,
+Auto-Filter-Slots als Spielmechanik, echte GDD-8b-Hybrid-Mechanik (Papier+digital gleichzeitig mit
+wanderndem Verhältnis), zweite Meta-Währung (Kaffeebohnen), Diegetisierung des Shops,
+Monetarisierung, GDD-Abschnitt-14-Ideen. Der Budget-Punkte/Shop-Loop UND das Ären-System (90er-
+Retrofit + 60er, s. o.) sind jetzt drin.

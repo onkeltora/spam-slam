@@ -10,6 +10,9 @@ extends Node
 ##   godot --path . -- --autoplay --card-gallery --shots=DIR  (screenshots of tricky mail layouts + dialogs)
 ##   godot --headless --path . -- --autoplay --sound-test     (SoundManager: every game event plays its slot)
 ##   godot --path . -- --autoplay --app-test [--shots=DIR]    (desktop programs via real taps/swipes)
+##   godot --path . -- --autoplay --shop-test [--shots=DIR]   (MetaProgress + shop screen, real taps)
+##   godot --path . -- --autoplay --era-test [--shots=DIR]     (EraManager: 60er paper era + 90er retrofit)
+##   godot --path . -- --autoplay --era=sixties [--shots=DIR]  (dev override: force-unlock+select an era)
 
 var main: Node
 var think := 0.6            # seconds the bot needs per mail
@@ -26,6 +29,9 @@ var _results: Array[Dictionary] = []
 
 func _ready() -> void:
 	GameManager.persist_highscore = false
+	MetaProgress.persist = false    # never touch the real progress.cfg from the bot
+	EraManager.persist = false      # never touch the real era.cfg from the bot
+	DisplayManager.persist = false  # never touch the real display.cfg from the bot
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--think="):
 			think = arg.get_slice("=", 1).to_float()
@@ -33,6 +39,11 @@ func _ready() -> void:
 			accuracy = arg.get_slice("=", 1).to_float()
 		elif arg.begins_with("--lang="):
 			TranslationServer.set_locale(arg.get_slice("=", 1))  # not saved
+		elif arg.begins_with("--era="):
+			var era_id := arg.get_slice("=", 1)
+			if era_id not in EraManager.unlocked:
+				EraManager.unlocked.append(era_id)  # dev override, bypasses the era shop cost
+			EraManager.select(era_id)
 		elif arg == "--crt=off":
 			main.get_node("World/CRT").enabled = false
 		elif arg.begins_with("--speed="):
@@ -47,6 +58,9 @@ func _ready() -> void:
 				shot_times.append(t.to_float())
 	if shots_dir != "":
 		DirAccess.make_dir_recursive_absolute(shots_dir)
+	if "--shop-test" in OS.get_cmdline_user_args():
+		_shop_test()
+		return
 	if "--app-test" in OS.get_cmdline_user_args():
 		_app_test()
 		return
@@ -61,6 +75,9 @@ func _ready() -> void:
 		return
 	if "--rule-test" in OS.get_cmdline_user_args():
 		_rule_test()
+		return
+	if "--era-test" in OS.get_cmdline_user_args():
+		_era_test()
 		return
 	if "--swipe-test" in OS.get_cmdline_user_args():
 		_swipe_test()
@@ -246,7 +263,7 @@ func _rule_test() -> void:
 			n.set_kind(randi() % 4)
 			rule.make_near_miss(n)
 			bad_miss += int(rule.matches(n))
-			var g := generator.generate(rule)
+			var g := generator.generate(rule, EraManager.current())
 			if rule.matches(g):
 				matched += 1
 				overridden += int(g.base_category() != rule.target)
@@ -671,7 +688,15 @@ func _app_test() -> void:
 
 
 func _tap_world(world_pos: Vector2) -> void:
-	var window_pos: Vector2 = get_viewport().get_final_transform() * (main.get_canvas_transform() * world_pos)
+	await _tap_at(get_viewport().get_final_transform() * (main.get_canvas_transform() * world_pos))
+
+
+## For UI in a separate CanvasLayer (Overlay), which isn't behind main's Camera2D/canvas transform.
+func _tap_screen(viewport_pos: Vector2) -> void:
+	await _tap_at(get_viewport().get_final_transform() * viewport_pos)
+
+
+func _tap_at(window_pos: Vector2) -> void:
 	var t := InputEventScreenTouch.new()
 	t.position = window_pos
 	t.pressed = true
@@ -692,4 +717,204 @@ func _double_tap_world(world_pos: Vector2) -> void:
 
 func _app_check(label: String, ok: bool, detail: String) -> int:
 	print("[app-test] %-44s %s %s" % [label, "OK" if ok else "FAIL", detail])
+	return int(not ok)
+
+
+# --- Shop test: Budget-Punkte accrual + the sequential shop, via a real run and real taps ---
+
+func _shop_test() -> void:
+	set_process(false)
+	var failures := 0
+	var overlay := main.overlay as Overlay
+	var desk: Node2D = main.get_node("Desk")
+
+	# Start from a clean slate regardless of what the real save file (or an earlier
+	# test in this process) contains — MetaProgress.persist is already off (see _ready()).
+	MetaProgress.budget = 0
+	MetaProgress.owned.clear()
+
+	GameManager.start_game()
+	GameManager.score = MetaProgress.ITEMS[0].cost * 10  # exact price of item 1, see SCORE_TO_BUDGET
+	GameManager._end_game("lives")
+	await get_tree().process_frame
+	failures += _shop_check("run credits Budget-Punkte proportional to score",
+			MetaProgress.budget == MetaProgress.ITEMS[0].cost,
+			"%d budget" % MetaProgress.budget)
+
+	# Save/load round-trip through a scratch file, so the real progress.cfg is never touched.
+	var scratch_path := "user://shop_test_scratch.cfg"
+	MetaProgress.save_path = scratch_path
+	MetaProgress.persist = true
+	MetaProgress.owned = ["plant"]
+	MetaProgress._save()
+	var raw := ConfigFile.new()
+	raw.load(scratch_path)
+	failures += _shop_check("save writes budget and owned items to disk",
+			raw.get_value("progress", "budget", -1) == MetaProgress.budget
+			and raw.get_value("progress", "owned", []) == MetaProgress.owned, "")
+	MetaProgress.budget = 0
+	MetaProgress.owned.clear()
+	MetaProgress._load()
+	failures += _shop_check("load restores budget and owned items from disk",
+			MetaProgress.budget == MetaProgress.ITEMS[0].cost and MetaProgress.owned == ["plant"],
+			"%d budget, owned=%s" % [MetaProgress.budget, MetaProgress.owned])
+	DirAccess.remove_absolute(scratch_path)
+	MetaProgress.save_path = MetaProgress.SAVE_PATH
+	MetaProgress.persist = false
+	MetaProgress.owned.clear()  # back to a clean slate for the rest of the test
+
+	await get_tree().create_timer(2.2).timeout  # GAME_OVER_SCREEN_DELAY + INPUT_DELAY
+	failures += _shop_check("game over screen shows first, not the shop", overlay._mode == Overlay.Mode.GAME_OVER, "")
+
+	await _tap_screen(Vector2(50, 50))  # anywhere but the buttons
+	failures += _shop_check("tap after game-over stats opens the shop", overlay._mode == Overlay.Mode.SHOP, "")
+	failures += _shop_check("shop shows the next item and its price",
+			overlay.subtitle_label.text == tr(MetaProgress.ITEMS[0].name_key)
+			and overlay.stats_label.text == tr("SHOP_PROGRESS").format({"have": MetaProgress.budget, "cost": MetaProgress.ITEMS[0].cost}), "")
+	failures += _shop_check("buy button is enabled (exact price met)", overlay.buy_button.visible and not overlay.buy_button.disabled, "")
+
+	await _tap_screen(overlay.buy_button.get_global_rect().get_center())
+	failures += _shop_check("tapping buy purchases the item", MetaProgress.is_owned("plant") and MetaProgress.budget == 0, "")
+	failures += _shop_check("shop stays open after buying (no accidental restart)", overlay._mode == Overlay.Mode.SHOP, "")
+	failures += _shop_check("next item advances to the second one",
+			MetaProgress.next_item().id == MetaProgress.ITEMS[1].id, "")
+	failures += _shop_check("buy button disables once unaffordable", overlay.buy_button.disabled, "")
+
+	await get_tree().create_timer(0.55).timeout  # let the desk pop-in tween finish
+	failures += _shop_check("the bought item actually appears on the desk", desk.get("_plant_appear") > 0.9, "%.2f" % desk.get("_plant_appear"))
+	if shots_dir != "":
+		await _shot("shop_after_purchase")
+
+	await _tap_screen(Vector2(50, 50))
+	failures += _shop_check("tap on the desk shop (not the buy button) opens the era shop", overlay._mode == Overlay.Mode.ERA_SHOP, "")
+	failures += _shop_check("era shop shows the next era and its price",
+			overlay.subtitle_label.text == tr(EraManager.ERAS[1].name_key)
+			and overlay.stats_label.text == tr("SHOP_PROGRESS").format({"have": MetaProgress.budget, "cost": EraManager.ERAS[1].unlock_cost}), "")
+	failures += _shop_check("era buy button disabled (not enough budget yet)", overlay.buy_button.visible and overlay.buy_button.disabled, "")
+
+	await get_tree().create_timer(0.35).timeout  # let the SHOP->ERA_SHOP input cooldown expire
+	await _tap_screen(Vector2(50, 50))
+	await get_tree().process_frame
+	failures += _shop_check("tap on the era shop (unaffordable, not the buy button) starts the next run", GameManager.running, "")
+	failures += _shop_check("era stays on nineties while unaffordable", EraManager.current_id == "nineties", "")
+	if shots_dir != "":
+		await get_tree().create_timer(0.3).timeout
+		await _shot("desk_during_gameplay_with_plant")
+
+	# Buy the second (last) desk item for real too, then check the "nothing left" state.
+	GameManager.score = 999999
+	GameManager._end_game("lives")
+	await get_tree().create_timer(2.2).timeout
+	await _tap_screen(Vector2(50, 50))
+	await _tap_screen(overlay.buy_button.get_global_rect().get_center())
+	failures += _shop_check("second real purchase also works", MetaProgress.is_owned("lamp"), "")
+	await get_tree().create_timer(0.55).timeout
+	failures += _shop_check("second bought item appears on the desk too", desk.get("_lamp_appear") > 0.9, "%.2f" % desk.get("_lamp_appear"))
+	if shots_dir != "":
+		await _shot("shop_both_items_on_desk")
+
+	overlay._refresh_texts()
+	failures += _shop_check("shop says everything is furnished once all items are owned",
+			not overlay.buy_button.visible and overlay.subtitle_label.text == tr("SHOP_ALL_OWNED"), "")
+	if shots_dir != "":
+		await _shot("shop_all_owned")
+
+	await _tap_screen(Vector2(50, 50))
+	failures += _shop_check("tap on the (all-owned) desk shop opens the era shop", overlay._mode == Overlay.Mode.ERA_SHOP, "")
+
+	# Now give enough budget and actually unlock the era: buy -> active immediately.
+	MetaProgress.budget = EraManager.ERAS[1].unlock_cost
+	overlay._refresh_texts()
+	failures += _shop_check("era buy button enabled once affordable", overlay.buy_button.visible and not overlay.buy_button.disabled, "")
+	await _tap_screen(overlay.buy_button.get_global_rect().get_center())
+	failures += _shop_check("buying the era unlocks and activates it immediately",
+			EraManager.is_unlocked("sixties") and EraManager.current_id == "sixties", "")
+	failures += _shop_check("era shop says everything is unlocked once bought",
+			not overlay.buy_button.visible and overlay.subtitle_label.text == tr("ERA_SHOP_ALL_UNLOCKED"), "")
+
+	await get_tree().create_timer(0.35).timeout  # let the SHOP->ERA_SHOP input cooldown expire
+	await _tap_screen(Vector2(50, 50))
+	await get_tree().process_frame
+	failures += _shop_check("tap on the fully-unlocked era shop starts the next run", GameManager.running, "")
+
+	print("[shop-test] %s (%d failures)" % ["PASSED" if failures == 0 else "FAILED", failures])
+	get_tree().quit(failures)
+
+
+func _shop_check(label: String, ok: bool, detail: String) -> int:
+	print("[shop-test] %-56s %s %s" % [label, "OK" if ok else "FAIL", detail])
+	return int(not ok)
+
+
+# --- Era test: 60er paper era end-to-end, then back to 90er, no half-forgotten monitor bits ---
+
+func _era_test() -> void:
+	set_process(false)
+	var failures := 0
+
+	if "sixties" not in EraManager.unlocked:
+		EraManager.unlocked.append("sixties")
+	EraManager.select("sixties")
+	_start()
+	await get_tree().create_timer(0.3).timeout
+
+	failures += _era_check("monitor chrome hidden in the 60er era",
+			not main.desktop.visible and not main.taskbar.visible and not main.app_windows.visible
+			and not main.crt.visible and not main.bezel.visible, "")
+	failures += _era_check("physical inbox meter shown instead", main.in_tray_meter.visible, "")
+	failures += _era_check("front card is a paper letter", main.front_card is PaperLetterCard, "")
+	failures += _era_check("sort targets are paper trays", main.folders.values().all(func(t: SortTarget) -> bool: return t is PaperTray), "")
+
+	# A double-tap where a 90er desktop icon would be must never open a program.
+	await _double_tap_world(Vector2(274, 72))
+	failures += _era_check("desktop icons unreachable, no program ever opens", not main.app_windows.is_open(), "")
+
+	var digital_leak := 0
+	var wrong_medium := 0
+	for i in 60:
+		var mail := GameManager.create_next_mail()
+		if mail.medium != MailData.Medium.PAPER:
+			wrong_medium += 1
+		if mail.attachment_ext != "" or mail.has_link or mail.digits_in_address or mail.biz_domain or mail.smiley_count > 0:
+			digital_leak += 1
+	failures += _era_check("generated mails are all PAPER medium", wrong_medium == 0, "%d wrong" % wrong_medium)
+	failures += _era_check("no digital-only noise leaks into paper mails", digital_leak == 0, "%d leaked" % digital_leak)
+
+	var bad_conditions := 0
+	var agnostic := SortRule.medium_agnostic_conditions()
+	for i in 20:
+		GameManager._advance_rule()
+		if GameManager.active_rule != null and GameManager.active_rule.condition not in agnostic:
+			bad_conditions += 1
+	failures += _era_check("60er rule pool only offers medium-agnostic conditions", bad_conditions == 0, "%d digital-only" % bad_conditions)
+
+	if shots_dir != "":
+		await _shot("era_sixties")
+
+	# Pile overflow: the paper-crash cue, not the bluescreen.
+	GameManager.set_pile_count(GameManager.PILE_MAX)
+	await get_tree().create_timer(main.CRASH_BLUESCREEN_DELAY + 0.2).timeout  # game_over is deferred, then main waits before bluescreen()
+	failures += _era_check("pile overflow still ends the run", not GameManager.running, "")
+	failures += _era_check("crash cue is in the BSOD state (paper-crash branch draws it, has_monitor=false)",
+			main.screen_overlay._state == ScreenOverlay.State.BSOD and not EraManager.current().has_monitor, "")
+
+	await get_tree().create_timer(GameManager.START_LIVES + 3.0).timeout  # let the game-over/shop flow settle
+
+	# Back to the 90er retrofit -- prove the swap is runtime-reversible, not a one-off.
+	EraManager.select("nineties")
+	_start()
+	await get_tree().create_timer(0.3).timeout
+	failures += _era_check("monitor chrome back for the 90er era",
+			main.desktop.visible and main.taskbar.visible and main.app_windows.visible
+			and main.crt.visible and main.bezel.visible, "")
+	failures += _era_check("physical inbox meter hidden again", not main.in_tray_meter.visible, "")
+	failures += _era_check("front card is back to a digital mail window", main.front_card is MailCard, "")
+	failures += _era_check("sort targets are back to desktop folders", main.folders.values().all(func(t: SortTarget) -> bool: return t is SortFolder), "")
+
+	print("[era-test] %s (%d failures)" % ["PASSED" if failures == 0 else "FAILED", failures])
+	get_tree().quit(failures)
+
+
+func _era_check(label: String, ok: bool, detail: String) -> int:
+	print("[era-test] %-70s %s %s" % [label, "OK" if ok else "FAIL", detail])
 	return int(not ok)

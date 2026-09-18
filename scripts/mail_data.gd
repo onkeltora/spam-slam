@@ -6,6 +6,9 @@ extends RefCounted
 
 enum Category { IMPORTANT, SPAM, NEWSLETTER, PHISHING }
 enum SenderKind { COMPANY, NEWSLETTER, STRANGER, SECURITY }
+## How this mail is presented -- rolled by MailGenerator from the active era's
+## paper_ratio, drawn by MailCard (DIGITAL) or PaperLetterCard (PAPER).
+enum Medium { DIGITAL, PAPER }
 
 const CATEGORY_KEYS := {
 	Category.IMPORTANT: "CAT_IMPORTANT",
@@ -99,6 +102,7 @@ var kind: SenderKind = SenderKind.COMPANY
 var sender_index := 0
 var subject_index := 0
 var is_boss := false
+var medium: Medium = Medium.DIGITAL
 
 # --- Rule-relevant features ---
 var caps := false
@@ -133,7 +137,7 @@ func set_kind(new_kind: SenderKind) -> void:
 	kind = new_kind
 	sender_index = randi() % SENDERS[kind].size()
 	subject_index = randi() % SUBJECT_COUNTS[kind]
-	if kind == SenderKind.SECURITY:
+	if kind == SenderKind.SECURITY and medium == Medium.DIGITAL:
 		has_link = true
 
 

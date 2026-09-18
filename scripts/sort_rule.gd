@@ -5,7 +5,8 @@ extends Resource
 ## matching mails and near-misses, so the generator can make the rule relevant.
 ##
 ## New rule = new Condition entry + one case in matches/make_match/make_near_miss
-## + a COND_ key in localization/strings.csv + an entry in RulePool.
+## + a COND_ key in localization/strings.csv + an entry in RulePool + (if it makes
+## sense without a monitor/email concepts) an entry in MEDIUM_AGNOSTIC below.
 
 enum Condition {
 	CAPS,
@@ -41,8 +42,28 @@ const CONDITION_KEYS := {
 	Condition.CORP_SECURITY: "COND_CORP_SECURITY",
 }
 
+## Conditions that make sense on a paper letter, not just a digital mail (no domains,
+## attachments or addresses). Anything not listed here defaults to digital-only, so a
+## newly added condition fails safe instead of silently leaking into the 60er era.
+const MEDIUM_AGNOSTIC := {
+	Condition.CAPS: true,
+	Condition.EXCLUSIVE: true,
+	Condition.URGENT: true,
+	Condition.BIG_AMOUNT: true,
+	Condition.CAT: true,
+	Condition.NO_SUBJECT: true,
+	Condition.FROM_HR: true,
+}
+
 const MANY_SMILEYS_THRESHOLD := 3
 const BIG_AMOUNT_THRESHOLD := 1000
+
+
+static func medium_agnostic_conditions() -> Array[Condition]:
+	var result: Array[Condition] = []
+	for c in MEDIUM_AGNOSTIC:
+		result.append(c)
+	return result
 
 @export var condition: Condition = Condition.CAPS
 @export var target: MailData.Category = MailData.Category.SPAM

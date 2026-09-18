@@ -70,12 +70,19 @@ func _draw() -> void:
 	draw_set_transform(center, 0.0, Vector2.ONE * s)
 
 	var rect := Rect2(-size * 0.5, size)
-	draw_rect(Rect2(rect.position + Vector2(8, 10), rect.size), Color(0, 0, 0, 0.35))
-	ScreenLayout.draw_raised(self, rect, ScreenLayout.WINDOW_GREY, 3.0)
-	var title_bar := Rect2(rect.position + Vector2(4, 4), Vector2(rect.size.x - 8, 24))
-	ScreenLayout.draw_title_bar(self, title_bar)
-	DrawUtil.text_left(self, tr("DIALOG_CAPTION"), Vector2(title_bar.position.x + 8, title_bar.get_center().y), 14, Color.WHITE)
-	ScreenLayout.draw_window_buttons(self, title_bar, Vector2(18, 16))
+	var has_monitor: bool = EraManager.current().has_monitor
+	var text_dark: Color = ScreenLayout.TEXT_DARK if has_monitor else Color("2b2013")
+	if has_monitor:
+		draw_rect(Rect2(rect.position + Vector2(8, 10), rect.size), Color(0, 0, 0, 0.35))
+		ScreenLayout.draw_raised(self, rect, ScreenLayout.WINDOW_GREY, 3.0)
+		var title_bar := Rect2(rect.position + Vector2(4, 4), Vector2(rect.size.x - 8, 24))
+		ScreenLayout.draw_title_bar(self, title_bar)
+		DrawUtil.text_left(self, tr("DIALOG_CAPTION"), Vector2(title_bar.position.x + 8, title_bar.get_center().y), 14, Color.WHITE)
+		ScreenLayout.draw_window_buttons(self, title_bar, Vector2(18, 16))
+	else:
+		draw_rect(Rect2(rect.position + Vector2(7, 9), rect.size), Color(0, 0, 0, 0.3))
+		draw_rect(rect, Color("f2e6c9"))
+		draw_rect(rect, Color("cdbb8c"), false, 2.0)
 
 	var icon_center := Vector2(rect.position.x + 50, rect.position.y + 74)
 	_draw_icon(icon_center)
@@ -85,13 +92,17 @@ func _draw() -> void:
 	DrawUtil.text_left(self, _title, Vector2(text_left, rect.position.y + 62), DrawUtil.fit_size(_title, TITLE_SIZE, text_area),
 			_accent.darkened(0.45), -1, 1, _accent.darkened(0.45))
 	DrawUtil.text_left(self, _message, Vector2(text_left, rect.position.y + 100), DrawUtil.fit_size(_message, MESSAGE_SIZE, text_area),
-			ScreenLayout.TEXT_DARK)
+			text_dark)
 
-	# OK button with focus frame
+	# OK button with focus frame (a plain paper button in a no-monitor era)
 	var ok := Rect2(Vector2(-45, rect.end.y - 44), Vector2(90, 30))
-	ScreenLayout.draw_raised(self, ok)
-	draw_rect(ok.grow(2.0), ScreenLayout.TEXT_DARK, false, 1.0)
-	DrawUtil.text_centered(self, tr("DIALOG_OK"), ok.get_center(), 16, ScreenLayout.TEXT_DARK)
+	if has_monitor:
+		ScreenLayout.draw_raised(self, ok)
+	else:
+		draw_rect(ok, Color("e0d3a8"))
+		draw_rect(ok, text_dark, false, 1.5)
+	draw_rect(ok.grow(2.0), text_dark, false, 1.0)
+	DrawUtil.text_centered(self, tr("DIALOG_OK"), ok.get_center(), 16, text_dark)
 	draw_set_transform(Vector2.ZERO)
 
 

@@ -2,7 +2,6 @@ extends Node2D
 ## Main scene: spawns mails into the inbox queue, reads swipes/keys,
 ## resolves sorts via GameManager and plays all the world feedback.
 
-const CARD_HOME := ScreenLayout.CARD_HOME
 const SWIPE_COMMIT_DISTANCE := 90.0    # drag this far = sorted, even while still holding
 const SWIPE_RELEASE_DISTANCE := 45.0   # releasing after this distance also sorts
 const SWIPE_FLICK_DISTANCE := 28.0     # short but fast flicks count too
@@ -26,10 +25,13 @@ const CRASH_SCREEN_DELAY := 2.6       # ...which stays readable for a moment
 @onready var taskbar: Node2D = %Taskbar
 @onready var app_windows: AppWindows = %AppWindows
 @onready var overlay: CanvasLayer = %Overlay
+@onready var crt: ColorRect = get_node("World/CRT")
+@onready var bezel: Node2D = get_node("World/Bezel")
 
+var in_tray_meter: InTrayMeter
 var queue: Array[MailData] = []
-var front_card: MailCard = null
-var folders := {}  # MailData.Category -> SortFolder
+var front_card: MailPresenter = null
+var folders := {}  # MailData.Category -> SortTarget (SortFolder or PaperTray)
 
 var _spawn_timer := 0.0
 var _shake := 0.0
@@ -41,11 +43,10 @@ var _last_tap_msec := 0
 
 
 func _ready() -> void:
-	for dir in GameManager.DEFAULT_LAYOUT:
-		var folder := SortFolder.new()
-		folder_root.add_child(folder)
-		folder.setup(GameManager.DEFAULT_LAYOUT[dir], dir)
-		folders[folder.category] = folder
+	in_tray_meter = InTrayMeter.new()
+	get_node("World").add_child(in_tray_meter)
+	_rebuild_targets()
+	_apply_era_visuals()
 
 	GameManager.screen_shake.connect(func(intensity: float) -> void: _shake = maxf(_shake, intensity))
 	GameManager.baskets_swapped.connect(_on_baskets_swapped)
@@ -69,12 +70,40 @@ func _start_run() -> void:
 	front_card = null
 	queue.clear()
 	pile.reset()
+	_apply_era_visuals()  # era may have changed since the last run (bought in the era shop)
 	screen_overlay.boot()
 	GameManager.start_game()
-	for folder in folders.values():
-		folder.move_to_slot(_dir_of_category(folder.category))
+	_rebuild_targets()
 	_spawn_timer = 0.0
 	_spawn_mail()
+
+
+## (Re)builds the 4 sorting targets for the currently active era -- SortFolder (desktop
+## icon) if it has a monitor, PaperTray (physical in/out tray) if it doesn't.
+func _rebuild_targets() -> void:
+	for child in folder_root.get_children():
+		child.queue_free()
+	folders.clear()
+	var has_monitor: bool = EraManager.current().has_monitor
+	for dir in GameManager.DEFAULT_LAYOUT:
+		var target: SortTarget = SortFolder.new() if has_monitor else PaperTray.new()
+		folder_root.add_child(target)
+		target.setup(GameManager.DEFAULT_LAYOUT[dir], dir)
+		folders[target.category] = target
+
+
+## Shows/hides the monitor-only chrome for the currently active era. The mail
+## presenter/sort-target classes and InboxPile branch on medium/era themselves;
+## this only handles whole subsystems that exist or don't exist per era.
+func _apply_era_visuals() -> void:
+	var has_monitor: bool = EraManager.current().has_monitor
+	desktop.visible = has_monitor
+	crt.visible = has_monitor
+	bezel.visible = has_monitor
+	taskbar.visible = has_monitor
+	app_windows.visible = has_monitor
+	in_tray_meter.visible = not has_monitor
+	pile.position = ScreenLayout.card_home()
 
 
 func _process(delta: float) -> void:
@@ -112,17 +141,18 @@ func _bring_next_to_front(from_pile: bool) -> void:
 		front_card = null
 		pile.set_mails([])
 		return
-	var card := MailCard.new()
+	var card: MailPresenter = PaperLetterCard.new() if queue[0].medium == MailData.Medium.PAPER else MailCard.new()
 	card.z_index = 2
 	cards.add_child(card)
-	var start := CARD_HOME + (InboxPile.LAYER_OFFSET if from_pile else Vector2(0, -150))
+	var card_home := ScreenLayout.card_home()
+	var start := card_home + (InboxPile.LAYER_OFFSET if from_pile else Vector2(0, -150))
 	card.setup(queue[0], start)
 	card.scale = Vector2.ONE * (0.97 if from_pile else 0.85)
 	if not from_pile:
 		card.modulate.a = 0.0
 	var duration := GameManager.get_slide_duration()
 	var tween := card.create_tween().set_parallel()
-	tween.tween_property(card, "base_position", CARD_HOME, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card, "base_position", card_home, duration).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card, "scale", Vector2.ONE, duration)
 	tween.tween_property(card, "modulate:a", 1.0, duration * 0.6)
 	front_card = card
@@ -180,7 +210,8 @@ func _on_tap(screen_pos: Vector2) -> void:
 	if app_windows.handle_tap(world_pos):
 		return
 	var covered := (front_card != null and front_card.covers(world_pos)) or pile.covers(world_pos)
-	var icon: String = "" if covered else desktop.icon_at(world_pos)
+	# No desktop icons to tap in a no-monitor era.
+	var icon: String = "" if covered or not EraManager.current().has_monitor else desktop.icon_at(world_pos)
 	var now := Time.get_ticks_msec()
 	if icon != "" and icon == _last_tap_icon and now - _last_tap_msec <= DOUBLE_TAP_MSEC:
 		app_windows.open_app(icon, desktop.icon_rect(icon))
@@ -236,7 +267,8 @@ func _sort_front(dir: int) -> void:
 	front_card = null
 
 	var result := GameManager.sort_mail(mail, dir)
-	var chosen: SortFolder = folders[result.chosen]
+	var chosen: SortTarget = folders[result.chosen]
+	var card_home := ScreenLayout.card_home()
 	card.fly_to(chosen.position)
 
 	if result.correct:
@@ -247,10 +279,14 @@ func _sort_front(dir: int) -> void:
 		_shake = maxf(_shake, 2.0 + GameManager.get_multiplier())
 	else:
 		chosen.reject()
-		var correct_folder: SortFolder = folders[result.correct_category]
+		var correct_folder: SortTarget = folders[result.correct_category]
 		correct_folder.flash_correct()
 		_burst(chosen.position, Color(1, 0.2, 0.15), 22)
-		FloatingText.spawn(fx, CARD_HOME + Vector2(0, -135), "✗ " + result.reason, Color("ff6a5a"), 24, 1.6, 20.0)
+		# Wants to sit just above the card, but never overlap the UP tray -- with the
+		# 60er's tall letter there's barely a gap between the two, so the tray wins.
+		var up_tray_bottom: float = ScreenLayout.folder_slots()[GameManager.Dir.UP].y + 85.0
+		var above_y := maxf(card_home.y - card.card_size.y * 0.5 - 25.0, up_tray_bottom)
+		FloatingText.spawn(fx, Vector2(card_home.x, above_y), "✗ " + result.reason, Color("ff6a5a"), 24, 1.6, 20.0)
 
 	if GameManager.running:
 		GameManager.set_pile_count(queue.size())

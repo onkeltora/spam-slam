@@ -39,16 +39,25 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var screen := ScreenLayout.SCREEN_RECT
+	var has_monitor: bool = EraManager.current().has_monitor
 	match _state:
 		State.BOOT:
+			if not has_monitor:
+				return  # no monitor to warm up
 			# Picture fades in from black with a bright flash, like a CRT warming up
 			var k := _t / BOOT_TIME
 			draw_rect(screen, Color(0, 0, 0, 1.0 - ease(k, 0.5)))
 			draw_rect(screen, Color(1, 1, 1, maxf(0.0, 0.35 - k) * 0.8))
 		State.POWER_OFF:
-			_draw_power_off(screen)
+			if has_monitor:
+				_draw_power_off(screen)
+			else:
+				_draw_lights_out(screen)
 		State.BSOD:
-			_draw_bluescreen(screen)
+			if has_monitor:
+				_draw_bluescreen(screen)
+			else:
+				_draw_paper_crash(screen)
 
 
 func _draw_power_off(screen: Rect2) -> void:
@@ -67,6 +76,40 @@ func _draw_power_off(screen: Rect2) -> void:
 	else:
 		var glow := maxf(0.0, 0.6 - (_t - POWER_OFF_TIME) * 0.8)
 		draw_circle(c, 3.0, Color(1, 1, 1, glow))
+
+
+## 60er equivalent of power_off(): no CRT to collapse, so the desk lamp just fades out.
+func _draw_lights_out(screen: Rect2) -> void:
+	var k := clampf(_t / POWER_OFF_TIME, 0.0, 1.0)
+	draw_rect(screen, Color(0.05, 0.03, 0.0, ease(k, 1.5)))
+
+
+## 60er equivalent of the bluescreen: the in-tray toppled, not a computer.
+func _draw_paper_crash(screen: Rect2) -> void:
+	draw_rect(screen, Color("cdbb8c"))
+	var ink := Color("2b2013")
+	var size := 20
+	var x := screen.position.x + 60
+	var y := screen.position.y + 150
+	var width := screen.size.x - 120
+
+	var title := " " + tr("PAPER_CRASH_TITLE") + " "
+	var title_w := DrawUtil.text_width(title, size)
+	var title_rect := Rect2(screen.get_center().x - title_w * 0.5 - 4, y - 16, title_w + 8, 30)
+	draw_rect(title_rect, Color("8a1f1f"))
+	DrawUtil.text_centered(self, title, title_rect.get_center(), size, Color.WHITE)
+	y += 60
+
+	for key in ["PAPER_CRASH_LINE_1", "PAPER_CRASH_LINE_2", "", "PAPER_CRASH_LINE_3", "PAPER_CRASH_LINE_4"]:
+		if key != "":
+			var line := tr(key)
+			DrawUtil.text_left(self, line, Vector2(x, y), DrawUtil.fit_size(line, size, width), ink)
+		y += 32
+	y += 30
+	var cont := tr("BSOD_CONTINUE")
+	if fmod(_t, 1.0) > 0.5:
+		cont = cont.trim_suffix("_")
+	DrawUtil.text_centered(self, cont, Vector2(screen.get_center().x, y), size, ink)
 
 
 func _draw_bluescreen(screen: Rect2) -> void:

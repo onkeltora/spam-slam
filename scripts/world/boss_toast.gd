@@ -58,15 +58,22 @@ func _draw() -> void:
 	var pos := Vector2(rest.x, lerpf(hidden_y, rest.y, ease(_appear, 0.4)))
 	var rect := Rect2(pos, SIZE)
 
+	var has_monitor: bool = EraManager.current().has_monitor
 	draw_rect(Rect2(rect.position + Vector2(5, 6), rect.size), Color(0, 0, 0, 0.3))
-	ScreenLayout.draw_raised(self, rect)
-	var title := Rect2(rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 20))
-	ScreenLayout.draw_title_bar(self, title, Color("1f6a2a"), Color("5cb85c"))
-	AppIcons.draw_flower(self, Vector2(title.position.x + 11, title.get_center().y), 7.5)
-	DrawUtil.text_left(self, tr("MESSENGER_TITLE"), Vector2(title.position.x + 22, title.get_center().y), 13, Color.WHITE)
-	ScreenLayout.draw_window_buttons(self, title, Vector2(16, 14))
-
-	var body_top := title.end.y + 4
+	var body_top: float
+	if has_monitor:
+		ScreenLayout.draw_raised(self, rect)
+		var title := Rect2(rect.position + Vector2(3, 3), Vector2(rect.size.x - 6, 20))
+		ScreenLayout.draw_title_bar(self, title, Color("1f6a2a"), Color("5cb85c"))
+		AppIcons.draw_flower(self, Vector2(title.position.x + 11, title.get_center().y), 7.5)
+		DrawUtil.text_left(self, tr("MESSENGER_TITLE"), Vector2(title.position.x + 22, title.get_center().y), 13, Color.WHITE)
+		ScreenLayout.draw_window_buttons(self, title, Vector2(16, 14))
+		body_top = title.end.y + 4
+	else:
+		draw_rect(rect, Color("f2e6c9"))
+		draw_rect(rect, Color("cdbb8c"), false, 2.0)
+		draw_circle(Vector2(rect.position.x + 13, rect.position.y + 13), 6.0, Color("8a1f1f"))
+		body_top = rect.position.y + 22
 	_draw_boss_avatar(Vector2(rect.position.x + 30, body_top + 34))
 
 	var text_x := rect.position.x + 60

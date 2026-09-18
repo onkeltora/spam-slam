@@ -38,6 +38,12 @@ extends ColorRect
 	set(value):
 		curvature = value
 		_apply()
+## Zooms the picture in slightly so the barrel-warp doesn't cut black corners/edges --
+## the old CRT "H-SIZE/V-SIZE" knob. Raise this if curvature is raised too.
+@export_range(0.0, 0.2, 0.005) var overscan := 0.03:
+	set(value):
+		overscan = value
+		_apply()
 ## Red/blue color fringing in canvas pixels.
 @export_range(0.0, 4.0, 0.1) var aberration_px := 0.7:
 	set(value):
@@ -51,8 +57,10 @@ extends ColorRect
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	position = ScreenLayout.SCREEN_RECT.position
-	size = ScreenLayout.SCREEN_RECT.size
+	# Covers the bulge-grown tube rect, not just SCREEN_RECT -- the picture has to reach
+	# past the screen rect for the bezel to cut a bulged tube face out of it.
+	position = ScreenLayout.tube_rect().position
+	size = ScreenLayout.tube_rect().size
 	visible = enabled
 	_apply()
 
@@ -61,12 +69,15 @@ func _apply() -> void:
 	var shader_material := material as ShaderMaterial
 	if shader_material == null:
 		return
-	shader_material.set_shader_parameter("rect_size", ScreenLayout.SCREEN_RECT.size)
+	var tube := ScreenLayout.tube_rect()
+	shader_material.set_shader_parameter("rect_size", tube.size)
+	shader_material.set_shader_parameter("content_inset", ScreenLayout.config().tube_bulge() / tube.size)
 	shader_material.set_shader_parameter("brightness", brightness)
 	shader_material.set_shader_parameter("compensate_scanlines", compensate_scanlines)
 	shader_material.set_shader_parameter("scanline_strength", scanline_strength)
 	shader_material.set_shader_parameter("scanline_spacing", scanline_spacing)
 	shader_material.set_shader_parameter("vignette_strength", vignette_strength)
 	shader_material.set_shader_parameter("curvature", curvature)
+	shader_material.set_shader_parameter("overscan", overscan)
 	shader_material.set_shader_parameter("aberration_px", aberration_px)
 	shader_material.set_shader_parameter("flicker", flicker)

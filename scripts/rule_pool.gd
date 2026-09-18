@@ -6,7 +6,10 @@ const C := SortRule.Condition
 const Cat := MailData.Category
 
 
-static func create() -> Array[SortRule]:
+## `allowed`: empty (default) = unfiltered (all conditions), matching every existing
+## call site. Non-empty keeps only rules whose condition is in it -- used by eras that
+## can't offer digital-only conditions (see EraManager.get_allowed_conditions()).
+static func create(allowed: Array[C] = []) -> Array[SortRule]:
 	var rules: Array[SortRule] = [
 		SortRule.create(C.CAPS, Cat.SPAM),
 		SortRule.create(C.DIGITS_IN_ADDRESS, Cat.PHISHING),
@@ -23,4 +26,10 @@ static func create() -> Array[SortRule]:
 		SortRule.create(C.FROM_HR, Cat.NEWSLETTER),
 		SortRule.create(C.CORP_SECURITY, Cat.IMPORTANT),
 	]
-	return rules
+	if allowed.is_empty():
+		return rules
+	var filtered: Array[SortRule] = []
+	for rule in rules:
+		if rule.condition in allowed:
+			filtered.append(rule)
+	return filtered

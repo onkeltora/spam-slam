@@ -11,8 +11,9 @@ const KIND_WEIGHTS := [30.0, 25.0, 25.0, 20.0]
 const K := MailData.SenderKind
 
 
-func generate(rule: SortRule) -> MailData:
+func generate(rule: SortRule, era: Dictionary) -> MailData:
 	var mail := MailData.new()
+	mail.medium = _roll_medium(era)
 	var roll := randf()
 	if rule != null and roll < RULE_MATCH_CHANCE:
 		# Prefer senders whose base basket differs from the rule target,
@@ -30,11 +31,16 @@ func generate(rule: SortRule) -> MailData:
 	return mail
 
 
-func generate_boss() -> MailData:
+func generate_boss(era: Dictionary) -> MailData:
 	var mail := MailData.new()
+	mail.medium = _roll_medium(era)
 	mail.set_kind(K.COMPANY)
 	mail.is_boss = true
 	return mail
+
+
+func _roll_medium(era: Dictionary) -> MailData.Medium:
+	return MailData.Medium.PAPER if randf() < era.paper_ratio else MailData.Medium.DIGITAL
 
 
 func _random_kind(avoid_base: int = -1) -> MailData.SenderKind:
@@ -62,11 +68,13 @@ func _add_noise(mail: MailData) -> void:
 
 	mail.caps = randf() < (0.18 if kind == K.STRANGER else 0.06)
 
-	var r := randf()
-	if loud:
-		mail.set_smiley_count(0 if r < 0.55 else 1 if r < 0.77 else 2 if r < 0.91 else randi_range(3, 4))
-	else:
-		mail.set_smiley_count(0 if r < 0.8 else 1 if r < 0.93 else 2 if r < 0.98 else 3)
+	# Pixel-smiley icons are a digital-era convention (MANY_SMILEYS is digital-only).
+	if mail.medium == MailData.Medium.DIGITAL:
+		var r := randf()
+		if loud:
+			mail.set_smiley_count(0 if r < 0.55 else 1 if r < 0.77 else 2 if r < 0.91 else randi_range(3, 4))
+		else:
+			mail.set_smiley_count(0 if r < 0.8 else 1 if r < 0.93 else 2 if r < 0.98 else 3)
 
 	var is_catfacts := kind == K.NEWSLETTER and mail.sender_index == 1
 	mail.has_cat = randf() < (0.35 if is_catfacts else 0.04)
@@ -76,15 +84,17 @@ func _add_noise(mail: MailData) -> void:
 	elif randf() < (0.22 if kind == K.SECURITY else 0.07):
 		mail.urgent = true
 
-	mail.set_digits_in_address(randf() < (0.15 if kind == K.STRANGER else 0.05))
-	mail.biz_domain = randf() < (0.12 if kind == K.STRANGER else 0.04)
 	mail.no_subject = randf() < 0.03
 
-	if randf() < (0.3 if kind == K.COMPANY else 0.12):
-		var e := randf()
-		mail.attachment_ext = "pdf" if e < 0.4 else "doc" if e < 0.7 else "zip" if e < 0.88 else "exe"
-	if kind != K.SECURITY:
-		mail.has_link = randf() < (0.06 if kind == K.COMPANY else 0.2)
+	# Address/attachment/link noise only makes sense for a digital mail window.
+	if mail.medium == MailData.Medium.DIGITAL:
+		mail.set_digits_in_address(randf() < (0.15 if kind == K.STRANGER else 0.05))
+		mail.biz_domain = randf() < (0.12 if kind == K.STRANGER else 0.04)
+		if randf() < (0.3 if kind == K.COMPANY else 0.12):
+			var e := randf()
+			mail.attachment_ext = "pdf" if e < 0.4 else "doc" if e < 0.7 else "zip" if e < 0.88 else "exe"
+		if kind != K.SECURITY:
+			mail.has_link = randf() < (0.06 if kind == K.COMPANY else 0.2)
 	if randf() < (0.15 if kind == K.STRANGER or kind == K.SECURITY else 0.06):
 		mail.amount = randi_range(1, 160) * 25
 

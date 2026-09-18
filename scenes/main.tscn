@@ -25,6 +25,8 @@
 shader = ExtResource("10_crt_shader")
 shader_parameter/rect_size = Vector2(880, 568)
 shader_parameter/curvature = 0.025
+shader_parameter/overscan = 0.03
+shader_parameter/content_inset = Vector2(0, 0)
 shader_parameter/scanline_strength = 0.13
 shader_parameter/scanline_spacing = 3.0
 shader_parameter/aberration_px = 0.7
@@ -99,6 +101,7 @@ offset_right = 1080.0
 offset_bottom = 598.0
 mouse_filter = 2
 script = ExtResource("9_crt")
+overscan = null
 
 [node name="Bezel" type="Node2D" parent="World" unique_id=798584138]
 z_index = 45
@@ -241,6 +244,15 @@ theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 22
 horizontal_alignment = 1
 autowrap_mode = 3
+
+[node name="BuyButton" type="Button" parent="Overlay/Dim/Center/VBox" unique_id=1878551532]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+focus_mode = 0
+theme_override_font_sizes/font_size = 26
+text = "Kaufen"
 
 [node name="Spacer" type="Control" parent="Overlay/Dim/Center/VBox" unique_id=1878551531]
 custom_minimum_size = Vector2(0, 24)

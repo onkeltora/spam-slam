@@ -7,7 +7,10 @@ extends Node2D
 
 const LAYER_OFFSET := Vector2(-8, -7)
 const LAYER_SIZE := Vector2(470, 190)
-const BASE_TOP := -105.0
+## Paper layers use PaperLetterCard's real DIN-A4 size (WIDTH/HEIGHT there) so the
+## waiting stack of letters looks like a stack of actual pages, not little windows.
+const LAYER_SIZE_PAPER := Vector2(320, 320 * 1.4142)
+const BASE_TOP_MARGIN := -10.0  # how far a layer's center sits above the card center
 const STRESS_START := 0.6      # pile ratio at which windows start to lag
 const CRASH_TRAIL_INTERVAL := 0.025
 const CRASH_TRAIL_MAX := 60
@@ -67,7 +70,7 @@ func _update_trail(delta: float) -> void:
 		# Bounce inside the desktop (in local coordinates around the card home)
 		var area := ScreenLayout.DESKTOP_RECT
 		area.position -= global_position
-		var half := LAYER_SIZE * 0.5
+		var half := _layer_size() * 0.5
 		if _trail_pos.x - half.x < area.position.x or _trail_pos.x + half.x > area.end.x:
 			_trail_vel.x *= -1.0
 		if _trail_pos.y - half.y < area.position.y or _trail_pos.y + half.y > area.end.y:
@@ -77,15 +80,26 @@ func _update_trail(delta: float) -> void:
 
 ## True if a waiting window of the cascade covers this world position.
 func covers(world_pos: Vector2) -> bool:
+	var size := _layer_size()
 	for i in _mails.size():
 		var center := global_position + _layer_center(i + 1)
-		if Rect2(center - LAYER_SIZE * 0.5, LAYER_SIZE).has_point(world_pos):
+		if Rect2(center - size * 0.5, size).has_point(world_pos):
 			return true
 	return false
 
 
+## Window layers (470x190) or paper layers (real DIN-A4 ratio), whichever the
+## current era uses -- see PaperLetterCard.WIDTH/HEIGHT for where LAYER_SIZE_PAPER
+## comes from.
+func _layer_size() -> Vector2:
+	return LAYER_SIZE if EraManager.current().has_monitor else LAYER_SIZE_PAPER
+
+
+## BASE_TOP_MARGIN is how far a layer's center sits above the card center -- this
+## cancels out regardless of layer size (a layer's own half-height already offsets
+## it), so it works unchanged for both window and paper layers.
 func _layer_center(layer: int) -> Vector2:
-	return LAYER_OFFSET * (layer - _shift) + Vector2(0, BASE_TOP + LAYER_SIZE.y * 0.5)
+	return LAYER_OFFSET * (layer - _shift) + Vector2(0, BASE_TOP_MARGIN)
 
 
 func _draw() -> void:
@@ -101,12 +115,19 @@ func _draw() -> void:
 			center.x += randf_range(-5.0, 5.0) * stress
 		var pop := ease(mail.pile_drop, 2.0)
 		draw_set_transform(center, 0.0, Vector2.ONE * (1.0 - pop * 0.15))
-		_draw_window(1.0 - pop, lag or _crashing)
+		if mail.medium == MailData.Medium.PAPER:
+			_draw_paper_layer(1.0 - pop, lag or _crashing)
+		else:
+			_draw_window(1.0 - pop, lag or _crashing)
 	draw_set_transform(Vector2.ZERO)
 
+	var has_monitor: bool = EraManager.current().has_monitor
 	for p in _trail:
 		draw_set_transform(p)
-		_draw_window(1.0, true)
+		if has_monitor:
+			_draw_window(1.0, true)
+		else:
+			_draw_paper_layer(1.0, true)
 	draw_set_transform(Vector2.ZERO)
 
 
@@ -126,3 +147,19 @@ func _draw_window(alpha: float, frozen: bool) -> void:
 		draw_rect(title, Color(0.5, 0.5, 0.5, alpha))
 	else:
 		ScreenLayout.draw_title_bar(self, title, Color(ScreenLayout.TITLE_BLUE, alpha), Color(ScreenLayout.TITLE_BLUE_END, alpha))
+
+
+## A waiting paper letter: aged sheet, no title bar. A reddish tint stands in for
+## "not responding" while under stress (there's no window chrome to grey out).
+func _draw_paper_layer(alpha: float, distressed: bool) -> void:
+	if alpha <= 0.0:
+		return
+	var rect := Rect2(-LAYER_SIZE_PAPER * 0.5, LAYER_SIZE_PAPER)
+	draw_rect(Rect2(rect.position + Vector2(5, 6), rect.size), Color(0, 0, 0, 0.2 * alpha))
+	draw_rect(rect, Color(Color("f2e6c9"), alpha))
+	draw_rect(rect, Color(Color("cdbb8c"), alpha), false, 2.0)
+	for i in range(1, 4):
+		var ly := rect.position.y + i * (rect.size.y / 4.0)
+		draw_line(Vector2(rect.position.x + 10, ly), Vector2(rect.end.x - 10, ly), Color(Color("cdbb8c"), alpha * 0.35), 1.0)
+	if distressed:
+		draw_rect(rect, Color(0.7, 0.15, 0.1, 0.28 * alpha))

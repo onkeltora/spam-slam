@@ -124,6 +124,11 @@ BSOD_LINE_2,The current application will be terminated.,Die aktuelle Anwendung w
 BSOD_LINE_3,*  Too many unread mails. The inbox has collapsed.,*  Zu viele ungelesene Mails. Der Posteingang ist eingestürzt.
 BSOD_LINE_4,*  Press any key to cry quietly.,*  Drücken Sie eine beliebige Taste zum leisen Weinen.
 BSOD_CONTINUE,Press any key to continue _,Weiter mit beliebiger Taste _
+PAPER_CRASH_TITLE,PAPER JAM,PAPIERSTAU
+PAPER_CRASH_LINE_1,The in-tray has collapsed under its own paperwork.,Der Stapel ist unter seinem eigenen Papierkram zusammengebrochen.
+PAPER_CRASH_LINE_2,Please see your supervisor immediately.,Bitte melden Sie sich sofort bei Ihrem Vorgesetzten.
+PAPER_CRASH_LINE_3,*  Too many unread letters. The tray has toppled.,*  Zu viele ungelesene Briefe. Der Stapel ist umgekippt.
+PAPER_CRASH_LINE_4,*  Press any key to cry quietly into your typewriter.,*  Drücken Sie eine beliebige Taste zum leisen Weinen in die Schreibmaschine.
 TITLE_NAME,SPAM SLAM,SPAM SLAM
 TITLE_HINT,Swipe each mail into the right folder – or use arrow keys / WASD.,Wisch jede Mail in den richtigen Ordner – oder nutz Pfeiltasten / WASD.
 TITLE_HINT2,The sender decides the folder – unless the RULE says otherwise!,Der Absender bestimmt den Ordner – außer die REGEL sagt was anderes!
@@ -136,4 +141,18 @@ GAMEOVER_BEST,Best: {v},Rekord: {v}
 GAMEOVER_NEW_BEST,NEW HIGHSCORE!,NEUER REKORD!
 GAMEOVER_STATS,Sorted {sorted}  ·  Accuracy {acc}%  ·  Max combo {combo}  ·  {time}s,Sortiert {sorted}  ·  Trefferquote {acc}%  ·  Max-Combo {combo}  ·  {time}s
 GAMEOVER_RESTART,Tap or press any key to try again,Tippen oder Taste drücken für neuen Versuch
+SHOP_TITLE,OFFICE SUPPLIES,BÜROBEDARF
+SHOP_ITEM_PLANT,Potted plant,Grünpflanze
+SHOP_ITEM_LAMP,Desk lamp,Schreibtischlampe
+SHOP_ALL_OWNED,You've furnished the whole desk.,Der Schreibtisch ist komplett eingerichtet.
+SHOP_BUDGET,Budget: {v},Budget: {v}
+SHOP_PROGRESS,{have} / {cost} Budget Points,{have} / {cost} Budget-Punkte
+SHOP_BUY,Buy,Kaufen
+SHOP_CONTINUE,Tap or press any key to continue,Tippen oder Taste drücken zum Weitermachen
+ERA_SHOP_TITLE,NEW ERA,NEUE ÄRA
+ERA_SHOP_ALL_UNLOCKED,No new era to unlock yet.,Noch keine neue Ära freizuschalten.
+ERA_NINETIES,The 90s – DullOS 98,Die 90er – DullOS 98
+ERA_SIXTIES,The 60s – Paper Mail Only,Die 60er – Nur Papierpost
+LETTER_FROM_PREFIX,From:,Von:
+LETTER_CAT_NOTE,(photo of a cat enclosed),(Foto einer Katze beigelegt)
 BTN_LANGUAGE,Deutsch,English
